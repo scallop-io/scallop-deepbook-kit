@@ -1,0 +1,25 @@
+# dev files
+*/**/build
+node_modules/
+
+# Local files
+.env
+/data
+**.local.*
+/.github
+
+
+# AI files
+**/.claude/settings.local.json
+/.specify
+/specs
+
+# Distribution files
+
+# VSCode
+.vscode/
+.history/
+
+# misc
+*.log
+**/.DS_Store
