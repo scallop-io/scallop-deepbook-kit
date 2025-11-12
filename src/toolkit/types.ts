@@ -2,9 +2,6 @@
  * Type definitions for DeepBook Margin Toolkit | DeepBook Margin Toolkit 類型定義
  */
 
-import { SuiClient } from '@mysten/sui/client';
-import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
-
 // ============================================================================
 // Network & Configuration Types | 網路與配置類型
 // ============================================================================

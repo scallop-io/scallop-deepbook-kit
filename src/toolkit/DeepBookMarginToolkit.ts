@@ -34,13 +34,13 @@
 import { SuiClient, getFullnodeUrl } from '@mysten/sui/client';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import { Transaction } from '@mysten/sui/transactions';
-import { DeepBookClient, MarginPoolContract, DeepBookConfig } from '@mysten/deepbook-v3';
+import { MarginPoolContract, DeepBookConfig } from '@mysten/deepbook-v3';
 import {
   TESTNET_COINS,
   TESTNET_POOLS,
   TESTNET_MARGIN_POOLS,
 } from '../testnet-config.js';
-import { ToolkitConfig, NetworkType, MarginCoinType, TransactionResult, MarginBalance, ReferralInfo } from './types.js';
+import { ToolkitConfig, MarginCoinType, MarginBalance } from './types.js';
 
 /**
  * Main DeepBook Margin Toolkit class | DeepBook Margin Toolkit 主類別
@@ -49,13 +49,10 @@ export class DeepBookMarginToolkit {
   private suiClient: SuiClient;
   private keypair: Ed25519Keypair;
   private address: string;
-  private network: NetworkType;
-  private deepbookClient: DeepBookClient;
   private marginPoolContract: MarginPoolContract;
   private supplierCapId?: string;
 
   constructor(config: ToolkitConfig) {
-    this.network = config.network;
 
     // Initialize SuiClient | 初始化 SuiClient
     const rpcUrl = getFullnodeUrl(config.network);
@@ -117,16 +114,6 @@ export class DeepBookMarginToolkit {
       coins,
       pools,
       marginPools,
-    });
-
-    // Initialize DeepBookClient | 初始化 DeepBookClient
-    // @ts-ignore - 類型定義問題
-    this.deepbookClient = new DeepBookClient({
-      client: this.suiClient,
-      address: this.address,
-      env: config.network,
-      coins,
-      pools,
     });
 
     // Initialize MarginPoolContract | 初始化 MarginPoolContract
@@ -258,7 +245,7 @@ export class DeepBookMarginToolkit {
         )
       );
 
-      const result = await this.suiClient.signAndExecuteTransaction({
+      await this.suiClient.signAndExecuteTransaction({
         signer: this.keypair,
         transaction: tx,
         options: {
@@ -304,7 +291,7 @@ export class DeepBookMarginToolkit {
       // Transfer withdrawn coin to sender | 將提取的 coin 轉給發送者
       tx.transferObjects([withdrawnCoin], this.address);
 
-      const result = await this.suiClient.signAndExecuteTransaction({
+      await this.suiClient.signAndExecuteTransaction({
         signer: this.keypair,
         transaction: tx,
         options: {
@@ -332,7 +319,7 @@ export class DeepBookMarginToolkit {
       // Add withdrawReferralFees call | 添加 withdrawReferralFees 調用
       tx.add(this.marginPoolContract.withdrawReferralFees(coin, referralId));
 
-      const result = await this.suiClient.signAndExecuteTransaction({
+      await this.suiClient.signAndExecuteTransaction({
         signer: this.keypair,
         transaction: tx,
         options: {

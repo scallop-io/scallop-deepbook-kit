@@ -114,8 +114,11 @@ function writeEnvFile(envMap: Map<string, string>): void {
     lines.push(...comments);
 
     // Add a separator if there are comments | 如果有註解則加入分隔符
-    if (comments.length > 0 && comments[comments.length - 1].trim() !== '') {
-      lines.push('');
+    if (comments.length > 0) {
+      const lastComment = comments[comments.length - 1];
+      if (lastComment && lastComment.trim() !== '') {
+        lines.push('');
+      }
     }
 
     // Write environment variables in sorted order for consistency | 按排序順序寫入環境變數以保持一致性
