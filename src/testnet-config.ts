@@ -13,6 +13,7 @@ export const TESTNET_PACKAGES = {
   REGISTRY_ID: '0x7c256edbda983a2cd6f946655f4bf3f00a41043993781f8674a7046e8c0e11d1',
   DEEP_TREASURY_ID: '0x69fffdae0075f8f71f4fa793549c11079266910e8905169845af1f5d00e09dcb',
   MARGIN_PACKAGE_ID: '0xf74ec503c186327663e11b5b888bd8a654bb8afaba34342274d3172edf3abeef',
+  MARGIN_INITIAL_PACKAGE_ID: '0x3f44af8fcef3cd753a221a4f25a61d2d6c74b4ca0b6809f6e670764b9debf08a', // for events
   MARGIN_REGISTRY_ID: '0xda0148a2759bea4afdc3b9dc44ca109df455ef30f36c690846f91a9e63cd94ca',
 } as const;
 
@@ -63,48 +64,48 @@ export const TESTNET_POOLS = {
     address: '0x48c95963e9eac37a316b7ae04a0deb761bcdcc2b67912374d6036e7f0e9bae9f',
     baseCoin: 'DEEP',
     quoteCoin: 'SUI',
-    lotSize: 1_000_000,      // 1 DEEP (6 decimals) | 1 DEEP（6 位小數）
-    tickSize: 1_000_000,     // 0.001 SUI (9 decimals) | 0.001 SUI（9 位小數）
+    lotSize: 1_000_000, // 1 DEEP (6 decimals) | 1 DEEP（6 位小數）
+    tickSize: 1_000_000, // 0.001 SUI (9 decimals) | 0.001 SUI（9 位小數）
   },
   SUI_DBUSDC: {
     // Actual pool address on testnet (verified 2025-11-11) | 實際存在於 testnet 上的 Pool 地址（2025-11-11 驗證）
     address: '0x1c19362ca52b8ffd7a33cee805a67d40f31e6ba303753fd3a4cfdfacea7163a5',
     baseCoin: 'SUI',
     quoteCoin: 'DBUSDC',
-    lotSize: 1_000_000,      // 0.001 SUI (9 decimals) | 0.001 SUI（9 位小數）
-    tickSize: 1_000,         // 0.001 DBUSDC (6 decimals) | 0.001 DBUSDC（6 位小數）
+    lotSize: 1_000_000, // 0.001 SUI (9 decimals) | 0.001 SUI（9 位小數）
+    tickSize: 1_000, // 0.001 DBUSDC (6 decimals) | 0.001 DBUSDC（6 位小數）
   },
   DEEP_DBUSDC: {
     // Actual pool address on testnet (verified 2025-11-11) | 實際存在於 testnet 上的 Pool 地址（2025-11-11 驗證）
     address: '0xe86b991f8632217505fd859445f9803967ac84a9d4a1219065bf191fcb74b622',
     baseCoin: 'DEEP',
     quoteCoin: 'DBUSDC',
-    lotSize: 1_000_000,      // 1 DEEP (6 decimals) | 1 DEEP（6 位小數）
-    tickSize: 1_000,         // 0.001 DBUSDC (6 decimals) | 0.001 DBUSDC（6 位小數）
+    lotSize: 1_000_000, // 1 DEEP (6 decimals) | 1 DEEP（6 位小數）
+    tickSize: 1_000, // 0.001 DBUSDC (6 decimals) | 0.001 DBUSDC（6 位小數）
   },
   DBUSDT_DBUSDC: {
     // Actual pool address on testnet (verified 2025-11-11) | 實際存在於 testnet 上的 Pool 地址（2025-11-11 驗證）
     address: '0x83970bb02e3636efdff8c141ab06af5e3c9a22e2f74d7f02a9c3430d0d10c1ca',
     baseCoin: 'DBUSDT',
     quoteCoin: 'DBUSDC',
-    lotSize: 1_000_000,      // 1 DBUSDT (6 decimals) | 1 DBUSDT（6 位小數）
-    tickSize: 1_000,         // 0.001 DBUSDC (6 decimals) | 0.001 DBUSDC（6 位小數）
+    lotSize: 1_000_000, // 1 DBUSDT (6 decimals) | 1 DBUSDT（6 位小數）
+    tickSize: 1_000, // 0.001 DBUSDC (6 decimals) | 0.001 DBUSDC（6 位小數）
   },
   WAL_DBUSDC: {
     // Actual pool address on testnet (verified 2025-11-11) | 實際存在於 testnet 上的 Pool 地址（2025-11-11 驗證）
     address: '0xeb524b6aea0ec4b494878582e0b78924208339d360b62aec4a8ecd4031520dbb',
     baseCoin: 'WAL',
     quoteCoin: 'DBUSDC',
-    lotSize: 1_000_000,      // 0.001 WAL (9 decimals) | 0.001 WAL（9 位小數）
-    tickSize: 1_000,         // 0.001 DBUSDC (6 decimals) | 0.001 DBUSDC（6 位小數）
+    lotSize: 1_000_000, // 0.001 WAL (9 decimals) | 0.001 WAL（9 位小數）
+    tickSize: 1_000, // 0.001 DBUSDC (6 decimals) | 0.001 DBUSDC（6 位小數）
   },
   WAL_SUI: {
     // Actual pool address on testnet (verified 2025-11-11) | 實際存在於 testnet 上的 Pool 地址（2025-11-11 驗證）
     address: '0x8c1c1b186c4fddab1ebd53e0895a36c1d1b3b9a77cd34e607bef49a38af0150a',
     baseCoin: 'WAL',
     quoteCoin: 'SUI',
-    lotSize: 1_000_000,      // 0.001 WAL (9 decimals) | 0.001 WAL（9 位小數）
-    tickSize: 1_000_000,     // 0.001 SUI (9 decimals) | 0.001 SUI（9 位小數）
+    lotSize: 1_000_000, // 0.001 WAL (9 decimals) | 0.001 WAL（9 位小數）
+    tickSize: 1_000_000, // 0.001 SUI (9 decimals) | 0.001 SUI（9 位小數）
   },
 } as const;
 
@@ -147,7 +148,42 @@ export const TESTNET_POOL_KEYS = [
   'WAL_SUI',
 ] as const;
 
-export type TestnetPoolKey = typeof TESTNET_POOL_KEYS[number];
+export type TestnetPoolKey = (typeof TESTNET_POOL_KEYS)[number];
+
+// ============================================================================
+// Margin Pool Contract Parameter Keys | Margin Pool 合約參數鍵
+// ============================================================================
+
+export const MARGIN_POOL_PARAM_KEYS = [
+  'supplyCap',
+  'maxUtilizationRate',
+  'protocolSpread',
+  'minBorrow',
+  'interestRate',
+  'totalSupply',
+  'supplyShares',
+  'totalBorrow',
+  'borrowShares',
+  'lastUpdateTimestamp',
+] as const;
+
+export const MARGIN_POOL_PARAM_KEY_STRUCT_MAP = {
+  supplyCap: 'U64',
+  maxUtilizationRate: 'U64',
+  protocolSpread: 'U64',
+  minBorrow: 'U64',
+  interestRate: 'U64',
+  totalSupply: 'U64',
+  supplyShares: 'U64',
+  totalBorrow: 'U64',
+  borrowShares: 'U64',
+  lastUpdateTimestamp: 'U64',
+} as Record<(typeof MARGIN_POOL_PARAM_KEYS)[number], 'U64'>;
+
+export const MARGIN_POOL_W_SUPPLIER_CAP_PARAM_KEYS = [
+  'userSupplyShares',
+  'userSupplyAmount',
+] as const;
 
 // ============================================================================
 // Utility Functions | 輔助函數
@@ -170,7 +206,10 @@ export function getCoinConfig(coinSymbol: keyof typeof TESTNET_COINS) {
 /**
  * Format coin amount (convert from smallest unit to human-readable) | 格式化代幣數量（從最小單位轉換為人類可讀）
  */
-export function formatCoinAmount(amount: number | bigint, coinSymbol: keyof typeof TESTNET_COINS): string {
+export function formatCoinAmount(
+  amount: number | bigint,
+  coinSymbol: keyof typeof TESTNET_COINS
+): string {
   const config = TESTNET_COINS[coinSymbol];
   const value = Number(amount) / config.scalar;
   return value.toFixed(config.decimals);

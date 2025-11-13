@@ -5,11 +5,14 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "build": "tsc",
+    "build": "npm run build:types && npm run build:tsup",
+    "build:tsup": "tsup src/index.ts --format esm,cjs --splitting --minify --treeshake",
+    "build:types": "tsc --build",
     "build:watch": "tsc --watch",
     "example:toolkit": "tsx src/examples/toolkit-demo.ts",
     "clean": "rm -rf dist",
     "lint": "eslint src --ext .ts",
+    "format:fix": "prettier --ignore-path 'dist/* docs/*' --write '**/*.{ts,json,md}'",
     "lint:fix": "eslint src --ext .ts --fix",
     "format": "prettier --write \"src/**/*.ts\"",
     "format:check": "prettier --check \"src/**/*.ts\"",
@@ -40,12 +43,15 @@
     "jest": "^30.2.0",
     "prettier": "^3.6.2",
     "ts-jest": "^29.4.5",
+    "tsup": "^8.5.1",
     "tsx": "^4.19.2",
     "typescript": "^5.9.3"
   },
   "dependencies": {
+    "@mysten/bcs": "^1.9.2",
     "@mysten/deepbook-v3": "^0.20.2",
     "@mysten/sui": "^1.44.0",
+    "bignumber.js": "^9.3.1",
     "dotenv": "^17.2.3"
   },
   "engines": {
