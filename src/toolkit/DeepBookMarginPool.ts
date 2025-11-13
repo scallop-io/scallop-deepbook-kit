@@ -120,10 +120,14 @@ export class DeepBookMarginPool {
    * Used to extract actual values returned from contract functions.
    */
   #parseInspectResultToBcsStructs(inspectResults: DevInspectResults, keys: MarginPoolParamKey[]) {
+    const results = inspectResults.results;
+    if (!results) return {};
+
     return keys.reduce(
       (acc, key, idx) => {
         // Raw bytes returned from devInspect
-        const bytes = inspectResults.results![idx]!.returnValues![0]![0];
+        const bytes = results[idx]?.returnValues?.[0]?.[0];
+        if (!bytes) return acc;
 
         // Decode bytes according to struct map
         const fn = bcs[MARGIN_POOL_PARAM_KEY_STRUCT_MAP[key]];
