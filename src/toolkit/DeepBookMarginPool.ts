@@ -8,6 +8,7 @@ import {
 } from '../testnet-config';
 import { bcs } from '@mysten/sui/bcs';
 import { TESTNET_COINS, TESTNET_MARGIN_POOLS, TESTNET_POOLS } from '../testnet-config';
+import { NetworkType } from './types';
 
 type MarginPoolParamKey = (typeof MARGIN_POOL_PARAM_KEYS)[number];
 type MarginPoolWithSupplierCapParamKey = (typeof MARGIN_POOL_W_SUPPLIER_CAP_PARAM_KEYS)[number];
@@ -40,7 +41,7 @@ export class DeepBookMarginPool {
    * @param suiClient - Optional SuiClient; defaults to fullnode client based on config env.
    */
   constructor(
-    readonly env: 'testnet' | 'mainnet' = 'testnet',
+    env: NetworkType = 'testnet',
     readonly dbConfig: DeepBookConfig = new DeepBookConfig({
       env,
       address: '',
@@ -61,6 +62,10 @@ export class DeepBookMarginPool {
   ) {
     // Initialize smart contract wrapper
     this.marginPoolContract = new MarginPoolContract(dbConfig);
+  }
+
+  get env() {
+    return this.dbConfig.env;
   }
 
   // ---------------------------
