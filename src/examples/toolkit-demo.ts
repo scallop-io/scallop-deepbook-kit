@@ -11,9 +11,9 @@
  * 5. Balance change tracking | 餘額變化追蹤
  */
 
-import { DeepBookMarginToolkit } from '../toolkit/index.js';
-import { getConfig, getPrivateKey } from '../config.js';
-import { setEnvVar, getEnvVar, displayEnvVars } from '../utils/env-manager.js';
+import { DeepBookMarginToolkit } from '../toolkit/index';
+import { getConfig, getPrivateKey } from '../config';
+import { setEnvVar, getEnvVar, displayEnvVars } from '../utils/env-manager';
 
 // Interface definition | 介面定義
 interface BalanceSnapshot {

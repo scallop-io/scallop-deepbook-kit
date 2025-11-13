@@ -15,7 +15,8 @@
  * ```
  */
 
-export { DeepBookMarginToolkit } from './DeepBookMarginToolkit.js';
+export { DeepBookMarginToolkit } from './DeepBookMarginToolkit';
+export { DeepBookMarginPool } from './DeepBookMarginPool';
 
 export type {
   NetworkType,
@@ -24,4 +25,4 @@ export type {
   TransactionResult,
   MarginBalance,
   ReferralInfo,
-} from './types.js';
+} from './types';
