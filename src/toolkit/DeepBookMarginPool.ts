@@ -1,4 +1,4 @@
-import { DeepBookConfig, MarginPoolContract } from '@mysten/deepbook-v3';
+import { DeepBookConfig, FLOAT_SCALAR, MarginPoolContract } from '@mysten/deepbook-v3';
 import { DevInspectResults, getFullnodeUrl, SuiClient } from '@mysten/sui/client';
 import { Transaction } from '@mysten/sui/transactions';
 import {
@@ -9,6 +9,7 @@ import {
 import { bcs } from '@mysten/sui/bcs';
 import { TESTNET_COINS, TESTNET_MARGIN_POOLS, TESTNET_POOLS } from '../testnet-config';
 import { NetworkType } from './types';
+import { BigNumber } from 'bignumber.js';
 
 type MarginPoolParamKey = (typeof MARGIN_POOL_PARAM_KEYS)[number];
 type MarginPoolWithSupplierCapParamKey = (typeof MARGIN_POOL_W_SUPPLIER_CAP_PARAM_KEYS)[number];
@@ -130,13 +131,54 @@ export class DeepBookMarginPool {
         if (!bytes) return acc;
 
         // Decode bytes according to struct map
-        const fn = bcs[MARGIN_POOL_PARAM_KEY_STRUCT_MAP[key]];
-        acc[key] = String(fn.parse(new Uint8Array(bytes)));
+        const bcsType = bcs[MARGIN_POOL_PARAM_KEY_STRUCT_MAP[key]];
+        acc[key] = bcsType.parse(new Uint8Array(bytes));
 
         return acc;
       },
       {} as Record<string, string>
     );
+  }
+
+  #formatResult(
+    result: Record<MarginPoolParamKey | MarginPoolWithSupplierCapParamKey, string>,
+    coinKey: string
+  ) {
+    const coin = this.dbConfig.getCoin(coinKey);
+    if (!coin) return {};
+
+    const formatted: Record<
+      MarginPoolParamKey | MarginPoolWithSupplierCapParamKey,
+      number
+    > = {
+      supplyCap: 0,
+      maxUtilizationRate: 0,
+      protocolSpread: 0,
+      minBorrow: 0,
+      interestRate: 0,
+      totalSupply: 0,
+      supplyShares: 0,
+      totalBorrow: 0,
+      borrowShares: 0,
+      lastUpdateTimestamp: 0,
+      userSupplyShares: 0,
+      userSupplyAmount: 0
+    };
+
+    for (const [key, value] of Object.entries(result)) {
+      if (key === 'lastUpdateTimestamp') {
+        formatted[key] = Number(value);
+      } else if (key === 'interestRate') {
+        formatted[key] = new BigNumber(value).dividedBy(FLOAT_SCALAR).toNumber();
+      } else {
+        formatted[key as MarginPoolParamKey | MarginPoolWithSupplierCapParamKey] = new BigNumber(
+          value
+        )
+          .dividedBy(coin.scalar)
+          .toNumber();
+      }
+    }
+    return formatted;
   }
 
   // ----------------------------------------------------------------
@@ -164,12 +206,15 @@ export class DeepBookMarginPool {
     if (!inspect) return tx;
 
     // Perform devInspect and decode results
-    return this.#parseInspectResultToBcsStructs(
-      await this.suiClient.devInspectTransactionBlock({
-        transactionBlock: tx,
-        sender: this.dbConfig.address,
-      }),
-      [...MARGIN_POOL_PARAM_KEYS]
+    return this.#formatResult(
+      this.#parseInspectResultToBcsStructs(
+        await this.suiClient.devInspectTransactionBlock({
+          transactionBlock: tx,
+          sender: this.dbConfig.address,
+        }),
+        [...MARGIN_POOL_PARAM_KEYS]
+      ),
+      coinKey
     );
   }
 
@@ -201,12 +246,15 @@ export class DeepBookMarginPool {
     if (!inspect) return tx;
 
     // Perform devInspect and decode results
-    return this.#parseInspectResultToBcsStructs(
-      await this.suiClient.devInspectTransactionBlock({
-        transactionBlock: tx,
-        sender: this.dbConfig.address,
-      }),
-      [...MARGIN_POOL_PARAM_KEYS]
+    return this.#formatResult(
+      this.#parseInspectResultToBcsStructs(
+        await this.suiClient.devInspectTransactionBlock({
+          transactionBlock: tx,
+          sender: this.dbConfig.address,
+        }),
+        [...MARGIN_POOL_PARAM_KEYS]
+      ),
+      coinKey
     );
   }
 }
