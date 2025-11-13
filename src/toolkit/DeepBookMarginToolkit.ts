@@ -52,7 +52,7 @@ export class DeepBookMarginToolkit {
 
   constructor(config: ToolkitConfig) {
     // Initialize SuiClient | 初始化 SuiClient
-    const rpcUrl = getFullnodeUrl(config.network);
+    const rpcUrl = config.fullnodeUrl ?? getFullnodeUrl(config.network);
     this.suiClient = new SuiClient({ url: rpcUrl });
 
     // Initialize keypair | 初始化密鑰對

@@ -28,6 +28,9 @@ export interface ToolkitConfig {
 
   /** Optional: existing Supplier Cap ID | 可選：現有的 Supplier Cap ID */
   supplierCapId?: string;
+
+  /** Optional: custom fullnode URL | 可選：自訂 fullnode URL */
+  fullnodeUrl?: string;
 }
 
 /**
