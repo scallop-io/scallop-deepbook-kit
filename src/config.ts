@@ -39,7 +39,7 @@ export const getConfig = (): NetworkConfig => {
   if (network !== 'testnet' && network !== 'mainnet') {
     console.warn(
       `⚠️  Invalid NETWORK value: ${network}. Using 'testnet' as default. | ` +
-      `無效的 NETWORK 值：${network}。使用 'testnet' 作為預設值。`
+        `無效的 NETWORK 值：${network}。使用 'testnet' 作為預設值。`
     );
     return {
       network: 'testnet',
@@ -70,8 +70,8 @@ export const getPrivateKey = (): string => {
   if (!privateKey) {
     throw new Error(
       'PRIVATE_KEY not found in .env file | PRIVATE_KEY 在 .env 檔案中未找到\n' +
-      'Please add your private key to the .env file | 請將您的私鑰添加到 .env 檔案中\n' +
-      'Example | 範例: PRIVATE_KEY=your_hex_private_key_here'
+        'Please add your private key to the .env file | 請將您的私鑰添加到 .env 檔案中\n' +
+        'Example | 範例: PRIVATE_KEY=your_hex_private_key_here'
     );
   }
 
@@ -81,8 +81,8 @@ export const getPrivateKey = (): string => {
   if (!/^[0-9a-fA-F]{64}$/.test(cleanKey)) {
     console.warn(
       '⚠️  Warning: PRIVATE_KEY may not be in correct format | 警告：PRIVATE_KEY 可能格式不正確\n' +
-      '   Expected: 64 hexadecimal characters | 預期：64 個十六進位字元\n' +
-      '   Example | 範例: a1b2c3d4...(64 characters total)'
+        '   Expected: 64 hexadecimal characters | 預期：64 個十六進位字元\n' +
+        '   Example | 範例: a1b2c3d4...(64 characters total)'
     );
   }
 

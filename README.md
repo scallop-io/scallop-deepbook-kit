@@ -134,6 +134,7 @@ new DeepBookMarginToolkit(config: ToolkitConfig)
 ```
 
 **Parameters | 參數:**
+
 - `config.network`: `'testnet' | 'mainnet'` - Network type | 網路類型
 - `config.privateKey`: `string` - Private key (hex, no 0x prefix) | 私鑰（hex 格式，無 0x 前綴）
 - `config.supplierCapId?`: `string` - Optional existing Supplier Cap ID | 可選的現有 Supplier Cap ID
@@ -153,6 +154,7 @@ Create a supply referral for the specified coin.
 為指定的幣種創建供應 referral。
 
 **Parameters | 參數:**
+
 - `coin`: `'SUI' | 'DBUSDC'` - Coin type | 幣種
 
 **Returns | 返回:** Referral ID or null
@@ -163,6 +165,7 @@ Supply funds to the margin pool.
 供應資金到 margin pool。
 
 **Parameters | 參數:**
+
 - `coin`: `'SUI' | 'DBUSDC'` - Coin type | 幣種
 - `amount`: `number` - Amount in human-readable units | 人類可讀單位的金額
 - `referralId?`: `string` - Optional referral ID | 可選的 referral ID
@@ -175,6 +178,7 @@ Withdraw funds from the margin pool.
 從 margin pool 提取資金。
 
 **Parameters | 參數:**
+
 - `coin`: `'SUI' | 'DBUSDC'` - Coin type | 幣種
 - `amount?`: `number` - Optional amount, omit to withdraw all | 可選的金額，省略則提取全部
 
@@ -186,6 +190,7 @@ Withdraw accumulated referral fees.
 提取累積的 referral 費用。
 
 **Parameters | 參數:**
+
 - `coin`: `'SUI' | 'DBUSDC'` - Coin type | 幣種
 - `referralId`: `string` - Referral Object ID | Referral 物件 ID
 
@@ -197,6 +202,7 @@ Query margin balance for a coin.
 查詢幣種的 margin 餘額。
 
 **Parameters | 參數:**
+
 - `coin`: `'SUI' | 'DBUSDC'` - Coin type | 幣種
 
 **Returns | 返回:** Balance information with `userSupplyAmount` and `walletBalance`
@@ -271,11 +277,13 @@ pnpm example:toolkit  # Run the DeepBook Margin Toolkit demo | 執行 DeepBook M
 ## Tech Stack | 技術堆疊
 
 ### Core Dependencies | 核心依賴
+
 - **[@mysten/sui](https://www.npmjs.com/package/@mysten/sui)** ^1.44.0 - Sui blockchain SDK | Sui 區塊鏈 SDK
 - **[@mysten/deepbook-v3](https://www.npmjs.com/package/@mysten/deepbook-v3)** ^0.20.2 - DeepBook V3 SDK
 - **[dotenv](https://www.npmjs.com/package/dotenv)** ^17.2.3 - Environment variable management | 環境變數管理
 
 ### Development Tools | 開發工具
+
 - **[TypeScript](https://www.typescriptlang.org/)** ^5.9.3 - Type-safe JavaScript | 型別安全的 JavaScript
 - **[Jest](https://jestjs.io/)** ^30.2.0 - Testing framework | 測試框架
 - **[ESLint](https://eslint.org/)** ^9.39.1 - Code linting | 程式碼檢查
@@ -283,6 +291,7 @@ pnpm example:toolkit  # Run the DeepBook Margin Toolkit demo | 執行 DeepBook M
 - **[tsx](https://www.npmjs.com/package/tsx)** ^4.19.2 - TypeScript execution | TypeScript 執行工具
 
 ### Package Manager | 套件管理器
+
 - **[pnpm](https://pnpm.io/)** ^10.21.0 - Fast, disk space efficient package manager | 快速、節省磁碟空間的套件管理器
 
 ## Configuration | 配置
@@ -301,19 +310,19 @@ These configurations are defined in `src/testnet-config.ts`.
 
 ## Environment Variables | 環境變數
 
-| Variable | Description | Required | Auto-generated |
-|----------|-------------|----------|----------------|
-| `PRIVATE_KEY` | Wallet private key (hex, no 0x) | ✅ Yes | ❌ No |
-| `SUPPLIER_CAP_ID` | Supplier Cap Object ID | ❌ No | ✅ Yes |
-| `SUI_REFERRAL_ID` | SUI Supply Referral ID | ❌ No | ✅ Yes |
-| `DBUSDC_REFERRAL_ID` | DBUSDC Supply Referral ID | ❌ No | ✅ Yes |
+| Variable             | Description                     | Required | Auto-generated |
+| -------------------- | ------------------------------- | -------- | -------------- |
+| `PRIVATE_KEY`        | Wallet private key (hex, no 0x) | ✅ Yes   | ❌ No          |
+| `SUPPLIER_CAP_ID`    | Supplier Cap Object ID          | ❌ No    | ✅ Yes         |
+| `SUI_REFERRAL_ID`    | SUI Supply Referral ID          | ❌ No    | ✅ Yes         |
+| `DBUSDC_REFERRAL_ID` | DBUSDC Supply Referral ID       | ❌ No    | ✅ Yes         |
 
-| 變數 | 說明 | 必需 | 自動產生 |
-|------|------|------|---------|
-| `PRIVATE_KEY` | 錢包私鑰（hex，無 0x） | ✅ 是 | ❌ 否 |
-| `SUPPLIER_CAP_ID` | Supplier Cap 物件 ID | ❌ 否 | ✅ 是 |
-| `SUI_REFERRAL_ID` | SUI 供應 Referral ID | ❌ 否 | ✅ 是 |
-| `DBUSDC_REFERRAL_ID` | DBUSDC 供應 Referral ID | ❌ 否 | ✅ 是 |
+| 變數                 | 說明                    | 必需  | 自動產生 |
+| -------------------- | ----------------------- | ----- | -------- |
+| `PRIVATE_KEY`        | 錢包私鑰（hex，無 0x）  | ✅ 是 | ❌ 否    |
+| `SUPPLIER_CAP_ID`    | Supplier Cap 物件 ID    | ❌ 否 | ✅ 是    |
+| `SUI_REFERRAL_ID`    | SUI 供應 Referral ID    | ❌ 否 | ✅ 是    |
+| `DBUSDC_REFERRAL_ID` | DBUSDC 供應 Referral ID | ❌ 否 | ✅ 是    |
 
 ## Troubleshooting | 疑難排解
 

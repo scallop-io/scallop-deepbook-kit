@@ -30,7 +30,9 @@ function displayBalanceChanges(
   after: BalanceSnapshot,
   operation: string
 ) {
-  console.log(`\n  📊 ${operation} - ${coinKey} Balance Changes | ${operation} - ${coinKey} 餘額變化`);
+  console.log(
+    `\n  📊 ${operation} - ${coinKey} Balance Changes | ${operation} - ${coinKey} 餘額變化`
+  );
   console.log(`  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
 
   const walletDiff = after.walletBalance - before.walletBalance;
@@ -39,12 +41,16 @@ function displayBalanceChanges(
   console.log(`  💰 Wallet Balance | 錢包餘額：`);
   console.log(`     Before | 變更前: ${before.walletBalance.toFixed(6)} ${coinKey}`);
   console.log(`     After | 變更後: ${after.walletBalance.toFixed(6)} ${coinKey}`);
-  console.log(`     Change | 變化: ${walletDiff >= 0 ? '+' : ''}${walletDiff.toFixed(6)} ${coinKey}`);
+  console.log(
+    `     Change | 變化: ${walletDiff >= 0 ? '+' : ''}${walletDiff.toFixed(6)} ${coinKey}`
+  );
 
   console.log(`\n  👤 Your Supply Amount | 您的供應金額：`);
   console.log(`     Before | 變更前: ${before.userSupplyAmount.toFixed(6)} ${coinKey}`);
   console.log(`     After | 變更後: ${after.userSupplyAmount.toFixed(6)} ${coinKey}`);
-  console.log(`     Change | 變化: ${userSupplyDiff >= 0 ? '+' : ''}${userSupplyDiff.toFixed(6)} ${coinKey}\n`);
+  console.log(
+    `     Change | 變化: ${userSupplyDiff >= 0 ? '+' : ''}${userSupplyDiff.toFixed(6)} ${coinKey}\n`
+  );
 }
 
 async function main() {
@@ -77,7 +83,7 @@ async function main() {
 
     // Initialize (will create Supplier Cap if needed) | 初始化（需要時會創建 Supplier Cap）
     let supplierCapId = existingCapId;
-    
+
     if (!supplierCapId) {
       console.log('📝 Creating new Supplier Cap... | 創建新的 Supplier Cap...\n');
       supplierCapId = await toolkit.initialize();
@@ -86,7 +92,9 @@ async function main() {
       setEnvVar('SUPPLIER_CAP_ID', supplierCapId);
       console.log('✅ Supplier Cap ID saved to .env file | Supplier Cap ID 已儲存到 .env 檔案\n');
     } else {
-      console.log('✅ Loaded Supplier Cap ID from environment variables | 從環境變數載入 Supplier Cap ID\n');
+      console.log(
+        '✅ Loaded Supplier Cap ID from environment variables | 從環境變數載入 Supplier Cap ID\n'
+      );
       await toolkit.initialize();
     }
 
@@ -129,7 +137,9 @@ async function main() {
     // 查詢當前狀態
     const suiBeforeWithdrawAll = await toolkit.getBalance('SUI');
 
-    console.log(`\n  ℹ️  當前您的供應金額: ${suiBeforeWithdrawAll.userSupplyAmount.toFixed(6)} SUI`);
+    console.log(
+      `\n  ℹ️  當前您的供應金額: ${suiBeforeWithdrawAll.userSupplyAmount.toFixed(6)} SUI`
+    );
 
     if (suiBeforeWithdrawAll.userSupplyAmount > 0) {
       console.log(`  ➡️ 提取所有已供應的 SUI...`);
@@ -140,7 +150,12 @@ async function main() {
     }
 
     const suiAfterWithdrawAll = await toolkit.getBalance('SUI');
-    displayBalanceChanges('SUI', suiBeforeWithdrawAll, suiAfterWithdrawAll, 'Withdraw All Supplied SUI | 提取所有已供應的 SUI');
+    displayBalanceChanges(
+      'SUI',
+      suiBeforeWithdrawAll,
+      suiAfterWithdrawAll,
+      'Withdraw All Supplied SUI | 提取所有已供應的 SUI'
+    );
 
     // 3. Supply 0.1 SUI | 供應 0.1 SUI
     console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
@@ -150,7 +165,9 @@ async function main() {
     const suiBeforeSupply = await toolkit.getBalance('SUI');
 
     const suiSupplyAmount = 0.1;
-    console.log(`\n💰 Supplying ${suiSupplyAmount} SUI to Margin Pool... | 供應 ${suiSupplyAmount} SUI 到 Margin Pool...\n`);
+    console.log(
+      `\n💰 Supplying ${suiSupplyAmount} SUI to Margin Pool... | 供應 ${suiSupplyAmount} SUI 到 Margin Pool...\n`
+    );
     await toolkit.supplyToMarginPool('SUI', suiSupplyAmount, suiReferralId || undefined);
     console.log(`✅ Supply successful! | 供應成功！\n`);
 
@@ -193,7 +210,9 @@ async function main() {
 
     const dbusdcBeforeWithdrawAll = await toolkit.getBalance('DBUSDC');
 
-    console.log(`\n  ℹ️  當前您的供應金額: ${dbusdcBeforeWithdrawAll.userSupplyAmount.toFixed(6)} DBUSDC`);
+    console.log(
+      `\n  ℹ️  當前您的供應金額: ${dbusdcBeforeWithdrawAll.userSupplyAmount.toFixed(6)} DBUSDC`
+    );
 
     if (dbusdcBeforeWithdrawAll.userSupplyAmount > 0) {
       console.log(`  ➡️ 提取所有已供應的 DBUSDC...`);
@@ -204,22 +223,36 @@ async function main() {
     }
 
     const dbusdcAfterWithdrawAll = await toolkit.getBalance('DBUSDC');
-    displayBalanceChanges('DBUSDC', dbusdcBeforeWithdrawAll, dbusdcAfterWithdrawAll, 'Withdraw All Supplied DBUSDC | 提取所有已供應的 DBUSDC');
+    displayBalanceChanges(
+      'DBUSDC',
+      dbusdcBeforeWithdrawAll,
+      dbusdcAfterWithdrawAll,
+      'Withdraw All Supplied DBUSDC | 提取所有已供應的 DBUSDC'
+    );
 
     // 3. Supply 10 DBUSDC | 供應 10 DBUSDC
     console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log('  Step 3: Supply 10 DBUSDC to Margin Pool | 步驟 3: 供應 10 DBUSDC 到 Margin Pool');
+    console.log(
+      '  Step 3: Supply 10 DBUSDC to Margin Pool | 步驟 3: 供應 10 DBUSDC 到 Margin Pool'
+    );
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
     const dbusdcBeforeSupply = await toolkit.getBalance('DBUSDC');
 
     const dbusdcSupplyAmount = 10;
-    console.log(`\n💰 Supplying ${dbusdcSupplyAmount} DBUSDC to Margin Pool... | 供應 ${dbusdcSupplyAmount} DBUSDC 到 Margin Pool...\n`);
+    console.log(
+      `\n💰 Supplying ${dbusdcSupplyAmount} DBUSDC to Margin Pool... | 供應 ${dbusdcSupplyAmount} DBUSDC 到 Margin Pool...\n`
+    );
     await toolkit.supplyToMarginPool('DBUSDC', dbusdcSupplyAmount, dbusdcReferralId || undefined);
     console.log(`✅ Supply successful! | 供應成功！\n`);
 
     const dbusdcAfterSupply = await toolkit.getBalance('DBUSDC');
-    displayBalanceChanges('DBUSDC', dbusdcBeforeSupply, dbusdcAfterSupply, 'Supply 10 DBUSDC | 供應 10 DBUSDC');
+    displayBalanceChanges(
+      'DBUSDC',
+      dbusdcBeforeSupply,
+      dbusdcAfterSupply,
+      'Supply 10 DBUSDC | 供應 10 DBUSDC'
+    );
 
     // ═══════════════════════════════════════════════════════
     // Summary | 總結
@@ -233,19 +266,26 @@ async function main() {
     console.log('📊 Final State | 最終狀態：\n');
 
     console.log('  SUI Margin Pool | SUI Margin Pool：');
-    console.log(`    • Your supply amount | 您的供應金額: ${suiAfterSupply.userSupplyAmount.toFixed(6)} SUI`);
-    console.log(`    • Wallet balance | 錢包餘額: ${suiAfterSupply.walletBalance.toFixed(6)} SUI\n`);
+    console.log(
+      `    • Your supply amount | 您的供應金額: ${suiAfterSupply.userSupplyAmount.toFixed(6)} SUI`
+    );
+    console.log(
+      `    • Wallet balance | 錢包餘額: ${suiAfterSupply.walletBalance.toFixed(6)} SUI\n`
+    );
 
     console.log('  DBUSDC Margin Pool | DBUSDC Margin Pool：');
-    console.log(`    • Your supply amount | 您的供應金額: ${dbusdcAfterSupply.userSupplyAmount.toFixed(6)} DBUSDC`);
-    console.log(`    • Wallet balance | 錢包餘額: ${dbusdcAfterSupply.walletBalance.toFixed(6)} DBUSDC\n`);
+    console.log(
+      `    • Your supply amount | 您的供應金額: ${dbusdcAfterSupply.userSupplyAmount.toFixed(6)} DBUSDC`
+    );
+    console.log(
+      `    • Wallet balance | 錢包餘額: ${dbusdcAfterSupply.walletBalance.toFixed(6)} DBUSDC\n`
+    );
 
     console.log('💾 Saved Environment Variables | 已儲存的環境變數：');
     displayEnvVars(['SUPPLIER_CAP_ID', 'SUI_REFERRAL_ID', 'DBUSDC_REFERRAL_ID']);
 
     console.log('═'.repeat(60));
     console.log('\n✨ Demo completed! | 示範程式執行完成！\n');
-
   } catch (error: any) {
     console.error('\n❌ Error occurred during execution | 執行過程中發生錯誤:');
     console.error(`Error message | 錯誤訊息: ${error.message || error}`);
@@ -254,9 +294,13 @@ async function main() {
       console.error(error.stack);
     }
     console.log('\n💡 Tips | 提示：');
-    console.log('  - Ensure you have enough SUI and DBUSDC balance | 確保您有足夠的 SUI 和 DBUSDC 餘額');
+    console.log(
+      '  - Ensure you have enough SUI and DBUSDC balance | 確保您有足夠的 SUI 和 DBUSDC 餘額'
+    );
     console.log('  - Ensure environment variables are set correctly | 確保環境變數設定正確');
-    console.log('  - Try running `pnpm merge-coins` to merge coins | 嘗試執行 `pnpm merge-coins` 合併代幣\n');
+    console.log(
+      '  - Try running `pnpm merge-coins` to merge coins | 嘗試執行 `pnpm merge-coins` 合併代幣\n'
+    );
     process.exit(1);
   }
 }

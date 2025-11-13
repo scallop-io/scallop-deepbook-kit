@@ -37,8 +37,10 @@ function parseEnvContent(content: string): Map<string, string> {
       let value = trimmedLine.substring(equalIndex + 1).trim();
 
       // Remove surrounding quotes if present | 移除周圍的引號（如果存在）
-      if ((value.startsWith('"') && value.endsWith('"')) ||
-          (value.startsWith("'") && value.endsWith("'"))) {
+      if (
+        (value.startsWith('"') && value.endsWith('"')) ||
+        (value.startsWith("'") && value.endsWith("'"))
+      ) {
         value = value.slice(1, -1);
       }
 
@@ -205,7 +207,7 @@ export function getRequiredEnvVar(key: string): string {
   if (!value) {
     throw new Error(
       `Required environment variable ${key} is not set | 必需的環境變數 ${key} 未設置\n` +
-      `Please add it to your .env file | 請將其添加到您的 .env 檔案中`
+        `Please add it to your .env file | 請將其添加到您的 .env 檔案中`
     );
   }
 
@@ -242,7 +244,9 @@ export function setEnvVars(vars: Record<string, string>): void {
 
   writeEnvFile(envMap);
 
-  console.log(`✅ Set ${Object.keys(vars).length} variables in .env | 已在 .env 中設置 ${Object.keys(vars).length} 個變數`);
+  console.log(
+    `✅ Set ${Object.keys(vars).length} variables in .env | 已在 .env 中設置 ${Object.keys(vars).length} 個變數`
+  );
 }
 
 /**
@@ -304,9 +308,10 @@ export function displayEnvVars(keys: string[]): void {
 
     if (value) {
       // For long strings (like Object ID) only show beginning and end | 對於長字串（如 Object ID）只顯示前後部分
-      const displayValue = value.length > 50
-        ? `${value.substring(0, 20)}...${value.substring(value.length - 20)}`
-        : value;
+      const displayValue =
+        value.length > 50
+          ? `${value.substring(0, 20)}...${value.substring(value.length - 20)}`
+          : value;
       console.log(`   ${key} = ${displayValue}`);
     } else {
       console.log(`   ${key} = (Not set | 未設置)`);
