@@ -35,12 +35,10 @@ import { SuiClient, getFullnodeUrl } from '@mysten/sui/client';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import { Transaction } from '@mysten/sui/transactions';
 import { MarginPoolContract, DeepBookConfig } from '@mysten/deepbook-v3';
-import {
-  TESTNET_COINS,
-  TESTNET_POOLS,
-  TESTNET_MARGIN_POOLS,
-} from '../testnet-config.js';
-import { ToolkitConfig, MarginCoinType, MarginBalance } from './types.js';
+import { TESTNET_COINS, TESTNET_POOLS, TESTNET_MARGIN_POOLS } from '../testnet-config';
+import { ToolkitConfig, MarginCoinType, MarginBalance } from './types';
+import { decodeSuiPrivateKey, SUI_PRIVATE_KEY_PREFIX } from '@mysten/sui/cryptography';
+import { hexOrBase64ToUint8Array, normalizePrivateKey } from '../utils/private-key';
 
 /**
  * Main DeepBook Margin Toolkit class | DeepBook Margin Toolkit 主類別
@@ -53,14 +51,12 @@ export class DeepBookMarginToolkit {
   private supplierCapId?: string;
 
   constructor(config: ToolkitConfig) {
-
     // Initialize SuiClient | 初始化 SuiClient
     const rpcUrl = getFullnodeUrl(config.network);
     this.suiClient = new SuiClient({ url: rpcUrl });
 
     // Initialize keypair | 初始化密鑰對
-    const privateKeyBytes = Buffer.from(config.privateKey, 'hex');
-    this.keypair = Ed25519Keypair.fromSecretKey(privateKeyBytes);
+    this.keypair = this.#parseSecretKey(config.privateKey);
     this.address = this.keypair.getPublicKey().toSuiAddress();
 
     // Store Supplier Cap ID if provided | 儲存 Supplier Cap ID（如果提供）
@@ -107,7 +103,6 @@ export class DeepBookMarginToolkit {
     };
 
     // Create DeepBookConfig | 創建 DeepBookConfig
-    // @ts-ignore - 類型定義問題
     const deepbookConfig = new DeepBookConfig({
       address: this.address,
       env: config.network,
@@ -117,8 +112,16 @@ export class DeepBookMarginToolkit {
     });
 
     // Initialize MarginPoolContract | 初始化 MarginPoolContract
-    // @ts-ignore - 類型定義問題
     this.marginPoolContract = new MarginPoolContract(deepbookConfig);
+  }
+
+  #parseSecretKey(secretKey: string): Ed25519Keypair {
+    if (secretKey.startsWith(SUI_PRIVATE_KEY_PREFIX)) {
+      const { secretKey: uint8ArraySecretKey } = decodeSuiPrivateKey(secretKey);
+      return Ed25519Keypair.fromSecretKey(normalizePrivateKey(uint8ArraySecretKey));
+    }
+
+    return Ed25519Keypair.fromSecretKey(normalizePrivateKey(hexOrBase64ToUint8Array(secretKey)));
   }
 
   /**
@@ -133,7 +136,7 @@ export class DeepBookMarginToolkit {
 
     // Create new Supplier Cap | 創建新的 Supplier Cap
     const capId = await this.createSupplierCap();
-    
+
     if (!capId) {
       throw new Error('Failed to create Supplier Cap');
     }
@@ -236,14 +239,7 @@ export class DeepBookMarginToolkit {
       const supplierCap = tx.object(this.supplierCapId);
 
       // SDK automatically handles unit conversion | SDK 自動處理單位轉換
-      tx.add(
-        this.marginPoolContract.supplyToMarginPool(
-          coin,
-          supplierCap,
-          amount,
-          referralId
-        )
-      );
+      tx.add(this.marginPoolContract.supplyToMarginPool(coin, supplierCap, amount, referralId));
 
       await this.suiClient.signAndExecuteTransaction({
         signer: this.keypair,
@@ -266,10 +262,7 @@ export class DeepBookMarginToolkit {
    * @param amount Withdraw amount (in human-readable units), omit to withdraw all | 提取金額（以人類可讀單位），不指定則提取全部
    * @returns Success status | 成功狀態
    */
-  async withdrawFromMarginPool(
-    coin: MarginCoinType,
-    amount?: number
-  ): Promise<boolean> {
+  async withdrawFromMarginPool(coin: MarginCoinType, amount?: number): Promise<boolean> {
     try {
       if (!this.supplierCapId) {
         throw new Error('Supplier Cap not initialized. Call initialize() first.');
