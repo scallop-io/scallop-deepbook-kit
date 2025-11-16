@@ -3,7 +3,16 @@
   "version": "0.1.0",
   "description": "A toolkit for integrating Scallop with DeepBook functionality",
   "main": "dist/index.js",
+  "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "source": "./src/index.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
   "scripts": {
     "build": "npm run build:tsup",
     "build:tsup": "tsup",
