@@ -5,9 +5,8 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "build": "npm run build:types && npm run build:tsup",
-    "build:tsup": "tsup src/index.ts --format esm,cjs --splitting --minify --treeshake",
-    "build:types": "tsc --build",
+    "build": "npm run build:tsup",
+    "build:tsup": "tsup",
     "build:watch": "tsc --watch",
     "example:toolkit": "tsx src/examples/toolkit-demo.ts",
     "clean": "rm -rf dist",
