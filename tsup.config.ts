@@ -12,7 +12,7 @@ export default defineConfig({
   clean: true,
 
   // Generate source maps for easier debugging in development.
-  sourcemap: false,
+  sourcemap: true,
 
   // Output formats: ESM (ECMAScript Modules) for modern environments
   // and CJS (CommonJS) for Node.js and older toolchains.
