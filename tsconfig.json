@@ -1,17 +1,18 @@
 {
   "compilerOptions": {
     /* Language and Environment */
-    "target": "ES2022",
-    "lib": ["ES2022"],
+    "target": "esnext",
+    "lib": ["esnext"],
 
     /* Modules */
-    "module": "commonjs",
+    "module": "esnext",
     "rootDir": "./src",
     "moduleResolution": "node",
     "resolveJsonModule": true,
 
     /* Emit */
     "declaration": true,
+    "emitDeclarationOnly": true,
     "declarationMap": false,
     "sourceMap": false,
     "outDir": "./dist",
