@@ -85,7 +85,7 @@ export class DeepBookMarginPool {
     tx: Transaction,
     paramKey: MarginPoolWithSupplierCapParamKey,
     coinKey: string,
-    supplierCap: string
+    supplierCap?: string
   ): void;
 
   // ---------------------------
@@ -120,7 +120,10 @@ export class DeepBookMarginPool {
    * Parse DevInspect results into BCS-decoded parameter objects.
    * Used to extract actual values returned from contract functions.
    */
-  #parseInspectResultToBcsStructs(inspectResults: DevInspectResults, keys: MarginPoolParamKey[]) {
+  #parseInspectResultToBcsStructs(
+    inspectResults: DevInspectResults,
+    keys: (MarginPoolParamKey | MarginPoolWithSupplierCapParamKey)[]
+  ) {
     const results = inspectResults.results;
     if (!results) return {};
 
@@ -143,14 +146,10 @@ export class DeepBookMarginPool {
   #formatResult(
     result: Record<MarginPoolParamKey | MarginPoolWithSupplierCapParamKey, string>,
     coinKey: string
-  ) {
+  ): Record<MarginPoolParamKey | MarginPoolWithSupplierCapParamKey, number> {
     const coin = this.dbConfig.getCoin(coinKey);
-    if (!coin) return {};
 
-    const formatted: Record<
-      MarginPoolParamKey | MarginPoolWithSupplierCapParamKey,
-      number
-    > = {
+    const formatted: Record<MarginPoolParamKey | MarginPoolWithSupplierCapParamKey, number> = {
       supplyCap: 0,
       maxUtilizationRate: 0,
       protocolSpread: 0,
@@ -162,8 +161,10 @@ export class DeepBookMarginPool {
       borrowShares: 0,
       lastUpdateTimestamp: 0,
       userSupplyShares: 0,
-      userSupplyAmount: 0
+      userSupplyAmount: 0,
     };
+
+    if (!coin) return formatted;
 
     for (const [key, value] of Object.entries(result)) {
       if (key === 'lastUpdateTimestamp') {
@@ -186,39 +187,6 @@ export class DeepBookMarginPool {
   // ----------------------------------------------------------------
 
   /**
-   * Fetch all margin pool parameters for a given coin key.
-   *
-   * @param coinKey - Identifier of the asset/coin.
-   * @param tx - Optional existing transaction to append calls into.
-   * @param inspect - If true, performs devInspect and returns parsed values.
-   *
-   * @returns Parsed parameter values (if inspect = true), or Transaction if inspect = false.
-   */
-  async getPoolParameters(
-    coinKey: string,
-    tx: Transaction = new Transaction(),
-    inspect: boolean = true
-  ) {
-    // Add all parameter calls to the transaction
-    MARGIN_POOL_PARAM_KEYS.forEach((paramKey) => this.#addParamCall(tx, paramKey, coinKey));
-
-    // If inspect is disabled, return the built transaction
-    if (!inspect) return tx;
-
-    // Perform devInspect and decode results
-    return this.#formatResult(
-      this.#parseInspectResultToBcsStructs(
-        await this.suiClient.devInspectTransactionBlock({
-          transactionBlock: tx,
-          sender: this.dbConfig.address,
-        }),
-        [...MARGIN_POOL_PARAM_KEYS]
-      ),
-      coinKey
-    );
-  }
-
-  /**
    * Build a transaction for pool parameters that require supplier-cap inputs.
    * This *does not* run devInspect — it only constructs the transaction.
    *
@@ -228,32 +196,59 @@ export class DeepBookMarginPool {
    *
    * @returns Transaction object ready for execution or further composition.
    */
-  async getPoolParametersWithSupplyCap(
+  async getPoolParameters(
     coinKey: string,
-    supplierCapId: string,
+    supplierCapId?: string,
+    tx?: Transaction
+  ): Promise<Record<MarginPoolParamKey | MarginPoolWithSupplierCapParamKey, number>>;
+
+  async getPoolParameters(
+    coinKey: string,
+    supplierCapId: string | undefined,
+    tx: Transaction,
+    inspect: true
+  ): Promise<Record<MarginPoolParamKey | MarginPoolWithSupplierCapParamKey, number>>;
+
+  async getPoolParameters(
+    coinKey: string,
+    supplierCapId: string | undefined,
+    tx: Transaction,
+    inspect: false
+  ): Promise<Transaction>;
+
+  // 👇 implementation signature (must be last)
+  async getPoolParameters(
+    coinKey: string,
+    supplierCapId?: string,
     tx: Transaction = new Transaction(),
     inspect: boolean = true
-  ) {
-    // Add normal parameters (no inspect)
-    this.getPoolParameters(coinKey, tx, false);
+  ): Promise<Record<MarginPoolParamKey | MarginPoolWithSupplierCapParamKey, number> | Transaction> {
+     // Add all parameter calls to the transaction
+    MARGIN_POOL_PARAM_KEYS.forEach((paramKey) => this.#addParamCall(tx, paramKey, coinKey));
 
-    // Add parameters that require supplierCap
-    MARGIN_POOL_W_SUPPLIER_CAP_PARAM_KEYS.forEach((paramKey) =>
-      this.#addParamCall(tx, paramKey, coinKey, supplierCapId)
-    );
+    // 2) Add parameters that require supplierCap
+    if (supplierCapId) {
+      MARGIN_POOL_W_SUPPLIER_CAP_PARAM_KEYS.forEach((paramKey) =>
+        this.#addParamCall(tx, paramKey, coinKey, supplierCapId)
+      );
+    }
 
-    // If inspect is disabled, return the built transaction
+    // 3) If inspect is disabled, return the built transaction
     if (!inspect) return tx;
 
-    // Perform devInspect and decode results
+    // 4) Perform devInspect and decode results
+    const allKeys: (MarginPoolParamKey | MarginPoolWithSupplierCapParamKey)[] = [
+      ...MARGIN_POOL_PARAM_KEYS,
+      ...MARGIN_POOL_W_SUPPLIER_CAP_PARAM_KEYS,
+    ];
+
+    const inspectResult = await this.suiClient.devInspectTransactionBlock({
+      transactionBlock: tx,
+      sender: this.dbConfig.address,
+    });
+
     return this.#formatResult(
-      this.#parseInspectResultToBcsStructs(
-        await this.suiClient.devInspectTransactionBlock({
-          transactionBlock: tx,
-          sender: this.dbConfig.address,
-        }),
-        [...MARGIN_POOL_PARAM_KEYS]
-      ),
+      this.#parseInspectResultToBcsStructs(inspectResult, allKeys),
       coinKey
     );
   }
