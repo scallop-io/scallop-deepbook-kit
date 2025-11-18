@@ -3,7 +3,7 @@ import { DeepBookMarginPool } from '../toolkit';
 const main = async () => {
   try {
     const dbMarginPool = new DeepBookMarginPool();
-    const suiMarginPoolParams = await dbMarginPool.getPoolParametersWithSupplyCap('SUI');
+    const suiMarginPoolParams = await dbMarginPool.getPoolParameters('SUI');
     console.log('SUI Margin Pool Parameters:', suiMarginPoolParams);
   } catch (error) {
     console.error('An error occurred:', error);

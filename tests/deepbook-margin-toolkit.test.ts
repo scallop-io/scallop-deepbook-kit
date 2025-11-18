@@ -7,7 +7,6 @@ describe('DeepBookMarginToolkit Tests', () => {
     const toolkit = new DeepBookMarginToolkit({
       privateKey: process.env.PRIVATE_KEY as string,
       network: 'testnet',
-
     });
     expect(toolkit).toBeDefined();
     expect(toolkit.getAddress().length > 0).toBe(true);
