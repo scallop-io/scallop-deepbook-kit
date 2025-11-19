@@ -13,6 +13,12 @@
       "default": "./dist/index.js"
     }
   },
+  "homepage": "https://github.com/scallop-io/scallop-deepbook-kit#readme",
+  "bugs": "https://github.com/scallop-io/scallop-deepbook-kit/issues",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/scallop-io/scallop-deepbook-kit.git"
+  },
   "scripts": {
     "build": "npm run build:tsup",
     "build:tsup": "tsup",
@@ -27,6 +33,7 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
+    "prepare": "husky install",
     "prepublishOnly": "pnpm run clean && pnpm run build"
   },
   "keywords": [
@@ -48,6 +55,7 @@
     "eslint": "^9.39.1",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.5.4",
+    "husky": "^8.0.3",
     "jest": "^30.2.0",
     "prettier": "^3.6.2",
     "ts-jest": "^29.4.5",
@@ -61,6 +69,19 @@
     "@mysten/sui": "^1.44.0",
     "bignumber.js": "^9.3.1",
     "dotenv": "^17.2.3"
+  },
+  "lint-staged": {
+    "**/*.ts": [
+      "pnpm run format:fix"
+    ],
+    "**/*.json|md": [
+      "pnpm run format:fix"
+    ]
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "lint-staged"
+    }
   },
   "engines": {
     "node": ">=18.0.0",
