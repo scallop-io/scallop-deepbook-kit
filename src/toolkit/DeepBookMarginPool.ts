@@ -20,6 +20,7 @@ type InterestConfig = {
   midBorrowApr: number;
   highBorrowApr: number;
   maxBorrowApr: number;
+  borrowApr: number;
 };
 export type MarginPoolParams = Record<
   MarginPoolParamKey | MarginPoolWithSupplierCapParamKey,
@@ -46,6 +47,11 @@ type RawMarginPoolConfig = {
   supply_cap: string;
 };
 
+type RawStatePoolConfig = {
+  total_supply: string;
+  total_borrow: string;
+};
+
 // Track which param keys require a supplierCap argument
 const _WITH_CAP_KEYS = new Set<string>(MARGIN_POOL_W_SUPPLIER_CAP_PARAM_KEYS as readonly string[]);
 
@@ -68,6 +74,7 @@ const isWithSupplierCapKey = (
  */
 export class DeepBookMarginPool {
   marginPoolContract: MarginPoolContract;
+  dbConfig: DeepBookConfig;
 
   /**
    * @param dbConfig - DeepBook configuration instance.
@@ -75,26 +82,30 @@ export class DeepBookMarginPool {
    */
   constructor(
     env: NetworkType = 'testnet',
-    readonly dbConfig: DeepBookConfig = new DeepBookConfig({
-      env,
-      address: '',
-      coins: TESTNET_COINS,
-      pools: TESTNET_POOLS,
-      marginPools: {
-        SUI: {
-          address: TESTNET_MARGIN_POOLS.SUI.address,
-          type: TESTNET_MARGIN_POOLS.SUI.coinType,
-        },
-        DBUSDC: {
-          address: TESTNET_MARGIN_POOLS.DBUSDC.address,
-          type: TESTNET_MARGIN_POOLS.DBUSDC.coinType,
-        },
-      },
-    }),
-    readonly suiClient = new SuiClient({ url: getFullnodeUrl(dbConfig.env) })
+    address = '',
+    readonly suiClient = new SuiClient({ url: getFullnodeUrl(env) }),
+    dbConfig?: DeepBookConfig
   ) {
+    this.dbConfig =
+      dbConfig ??
+      new DeepBookConfig({
+        env,
+        address,
+        coins: TESTNET_COINS,
+        pools: TESTNET_POOLS,
+        marginPools: {
+          SUI: {
+            address: TESTNET_MARGIN_POOLS.SUI.address,
+            type: TESTNET_MARGIN_POOLS.SUI.coinType,
+          },
+          DBUSDC: {
+            address: TESTNET_MARGIN_POOLS.DBUSDC.address,
+            type: TESTNET_MARGIN_POOLS.DBUSDC.coinType,
+          },
+        },
+      });
     // Initialize smart contract wrapper
-    this.marginPoolContract = new MarginPoolContract(dbConfig);
+    this.marginPoolContract = new MarginPoolContract(this.dbConfig);
   }
 
   get env() {
@@ -201,15 +212,22 @@ export class DeepBookMarginPool {
       midBorrowApr: 0,
       highBorrowApr: 0,
       maxBorrowApr: 0,
+      borrowApr: 0,
       ...coin,
     };
 
     if (!coin) return formatted;
 
+    const useFloatScalarKeys = new Set<string>([
+      'interestRate',
+      'maxUtilizationRate',
+      'protocolSpread',
+    ]);
     for (const [key, value] of Object.entries(result)) {
       if (key === 'lastUpdateTimestamp') {
         formatted[key] = Number(value);
-      } else if (key === 'interestRate') {
+      } else if (useFloatScalarKeys.has(key)) {
+        // @ts-ignore
         formatted[key] = new BigNumber(value).dividedBy(FLOAT_SCALAR).toNumber();
       } else {
         formatted[key as MarginPoolParamKey | MarginPoolWithSupplierCapParamKey] = new BigNumber(
@@ -222,9 +240,37 @@ export class DeepBookMarginPool {
     return formatted;
   }
 
+  #getCurrentBorrowApr(utilizationRate: bigint, interestConfig: RawInterestConfig) {
+    const baseRate = BigInt(interestConfig.base_rate); // B
+    const baseSlope = BigInt(interestConfig.base_slope); // S
+    const excessSlope = BigInt(interestConfig.excess_slope); // E
+    const optimalUtil = BigInt(interestConfig.optimal_utilization); // Uopt
+
+    // clamp U to [0, 1e9]
+    const U =
+      utilizationRate < 0n
+        ? 0n
+        : utilizationRate > BigInt(FLOAT_SCALAR)
+          ? BigInt(FLOAT_SCALAR)
+          : BigInt(utilizationRate);
+
+    if (U <= optimalUtil) {
+      // r(U) = B + S * U / Uopt
+      return baseRate + (baseSlope * U) / optimalUtil;
+    }
+
+    // r(U) = B + S + E * (U - Uopt) / (1 - Uopt)
+    return (
+      baseRate +
+      baseSlope +
+      (excessSlope * (U - optimalUtil)) / (BigInt(FLOAT_SCALAR) - optimalUtil)
+    );
+  }
+
   #calculateKinksAndBorrowApr(
     interestConfig: RawInterestConfig,
-    marginPoolConfig: RawMarginPoolConfig
+    marginPoolConfig: RawMarginPoolConfig,
+    state: RawStatePoolConfig
   ) {
     const baseRate = BigInt(interestConfig.base_rate);
     const baseSlope = BigInt(interestConfig.base_slope);
@@ -249,6 +295,16 @@ export class DeepBookMarginPool {
 
     // maxBorrowApr at U = 1.0 (i.e. 1e9)
     const maxBorrowApr = baseRate + baseSlope + excessSlope;
+    const currentBorrowApr = this.#getCurrentBorrowApr(
+      BigInt(
+        BigNumber(state.total_borrow)
+          .dividedBy(state.total_supply)
+          .shiftedBy(9)
+          .decimalPlaces(0)
+          .toString()
+      ),
+      interestConfig
+    );
 
     const normalize = (value: bigint) => BigNumber(value).dividedBy(FLOAT_SCALAR).toNumber();
 
@@ -261,6 +317,7 @@ export class DeepBookMarginPool {
         midBorrowApr,
         highBorrowApr,
         maxBorrowApr,
+        borrowApr: currentBorrowApr,
       },
       // convenience: normalized numbers (e.g. 0.125 = 12.5%)
       normalized: {
@@ -270,6 +327,7 @@ export class DeepBookMarginPool {
         midBorrowApr: normalize(midBorrowApr),
         highBorrowApr: normalize(highBorrowApr),
         maxBorrowApr: normalize(maxBorrowApr),
+        borrowApr: normalize(currentBorrowApr),
       },
     };
   }
@@ -292,8 +350,12 @@ export class DeepBookMarginPool {
     const config = fields.config.fields;
     const interestConfig = config.interest_config.fields as RawInterestConfig;
     const marginPoolConfig = config.margin_pool_config.fields as RawMarginPoolConfig;
-    const { normalized } = this.#calculateKinksAndBorrowApr(interestConfig, marginPoolConfig);
-
+    const statePoolConfig = fields.state.fields as RawStatePoolConfig;
+    const { normalized } = this.#calculateKinksAndBorrowApr(
+      interestConfig,
+      marginPoolConfig,
+      statePoolConfig
+    );
     return normalized;
   }
 
@@ -363,9 +425,13 @@ export class DeepBookMarginPool {
     });
 
     const interestData = await this.#getInterestConfig(coinKey);
+    const formattedResult = this.#formatResult(
+      this.#parseInspectResultToBcsStructs(inspectResult, allKeys),
+      coinKey
+    );
 
     return {
-      ...this.#formatResult(this.#parseInspectResultToBcsStructs(inspectResult, allKeys), coinKey),
+      ...formattedResult,
       ...interestData,
     };
   }
