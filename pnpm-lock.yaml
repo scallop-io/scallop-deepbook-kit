@@ -12,11 +12,11 @@ importers:
         specifier: ^1.9.2
         version: 1.9.2
       '@mysten/deepbook-v3':
-        specifier: ^0.20.2
-        version: 0.20.2(typescript@5.9.3)
+        specifier: ^0.21.0
+        version: 0.21.0(typescript@5.9.3)
       '@mysten/sui':
-        specifier: ^1.44.0
-        version: 1.44.0(typescript@5.9.3)
+        specifier: ^1.45.0
+        version: 1.45.0(typescript@5.9.3)
       bignumber.js:
         specifier: ^9.3.1
         version: 9.3.1
@@ -761,12 +761,12 @@ packages:
   '@mysten/bcs@1.9.2':
     resolution: {integrity: sha512-kBk5xrxV9OWR7i+JhL/plQrgQ2/KJhB2pB5gj+w6GXhbMQwS3DPpOvi/zN0Tj84jwPvHMllpEl0QHj6ywN7/eQ==}
 
-  '@mysten/deepbook-v3@0.20.2':
-    resolution: {integrity: sha512-HlVIFslHYHdjPfq4XfBVTDqd6SLuNEKrxf0IGAw3WmcmcypY9vEff0ESaW1/3yI7Wuny8YYDntLBBs+8ahT14Q==}
+  '@mysten/deepbook-v3@0.21.0':
+    resolution: {integrity: sha512-dFbEwX7yy7Ns7kec1P0uAM09vP45ctdbZNTrq/Huakm0ReRmQzTiu9EBpeLVwnsJB2/8wNR7ByeNFcy/aUHEhw==}
     engines: {node: '>=18'}
 
-  '@mysten/sui@1.44.0':
-    resolution: {integrity: sha512-3p/y5gUhsG/MBXLOdX6qw1b8r1z/lKMvdfpacH+CjuEx8Y0U98R9fLmnFFd+6K+d+CE1gctBuMtcOqr+SppBug==}
+  '@mysten/sui@1.45.0':
+    resolution: {integrity: sha512-WYpZmrGWE/FeQaRhYrAYpHcHallj4BFIfSmjq6BkODzEhP9HfMplQAtd8AmtctwO7cpHJ+BjPUOguEAcf1gU4g==}
     engines: {node: '>=18'}
 
   '@mysten/utils@0.2.0':
@@ -3227,10 +3227,10 @@ snapshots:
       '@mysten/utils': 0.2.0
       '@scure/base': 1.2.6
 
-  '@mysten/deepbook-v3@0.20.2(typescript@5.9.3)':
+  '@mysten/deepbook-v3@0.21.0(typescript@5.9.3)':
     dependencies:
       '@mysten/bcs': 1.9.2
-      '@mysten/sui': 1.44.0(typescript@5.9.3)
+      '@mysten/sui': 1.45.0(typescript@5.9.3)
       '@noble/hashes': 1.8.0
       axios: 1.13.2
       axios-retry: 4.5.0(axios@1.13.2)
@@ -3240,7 +3240,7 @@ snapshots:
       - debug
       - typescript
 
-  '@mysten/sui@1.44.0(typescript@5.9.3)':
+  '@mysten/sui@1.45.0(typescript@5.9.3)':
     dependencies:
       '@graphql-typed-document-node/core': 3.2.0(graphql@16.12.0)
       '@mysten/bcs': 1.9.2

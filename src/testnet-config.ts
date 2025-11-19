@@ -12,9 +12,9 @@ export const TESTNET_PACKAGES = {
   DEEPBOOK_PACKAGE_ID: '0xfb28c4cbc6865bd1c897d26aecbe1f8792d1509a20ffec692c800660cbec6982',
   REGISTRY_ID: '0x7c256edbda983a2cd6f946655f4bf3f00a41043993781f8674a7046e8c0e11d1',
   DEEP_TREASURY_ID: '0x69fffdae0075f8f71f4fa793549c11079266910e8905169845af1f5d00e09dcb',
-  MARGIN_PACKAGE_ID: '0xf74ec503c186327663e11b5b888bd8a654bb8afaba34342274d3172edf3abeef',
-  MARGIN_INITIAL_PACKAGE_ID: '0x3f44af8fcef3cd753a221a4f25a61d2d6c74b4ca0b6809f6e670764b9debf08a', // for events
-  MARGIN_REGISTRY_ID: '0xda0148a2759bea4afdc3b9dc44ca109df455ef30f36c690846f91a9e63cd94ca',
+  MARGIN_PACKAGE_ID: '0x7f2d8f15343f210e813595a8798d6197d152061d0a35be938372f4b1cd66f209',
+  MARGIN_INITIAL_PACKAGE_ID: '0x7f2d8f15343f210e813595a8798d6197d152061d0a35be938372f4b1cd66f209', // for events
+  MARGIN_REGISTRY_ID: '0x31b9086767e9b5925cb29414ea623a7705b5600d9594d88c17c7a011cb499ab4',
 } as const;
 
 // ============================================================================
@@ -116,12 +116,12 @@ export const TESTNET_POOLS = {
 export const TESTNET_MARGIN_POOLS = {
   SUI: {
     // Actual margin pool address on testnet (verified 2025-11-11) | 實際存在於 testnet 上的 Margin Pool 地址（2025-11-11 驗證）
-    address: '0x4b66d48e11cf9d6b82ab350185d7929494f622c0fff25a8e93e044ca76e4eb1a',
+    address: '0xe620d6a5390e57e88baff18af89383130d4210eb496a024edcd62f270a655af7',
     coinType: '0x2::sui::SUI',
   },
   DBUSDC: {
     // Actual margin pool address on testnet (verified 2025-11-11) | 實際存在於 testnet 上的 Margin Pool 地址（2025-11-11 驗證）
-    address: '0xa363f544a496ba179e23d316c86decad37628622220a372e400448257533fb98',
+    address: '0xfd0dc290a120ad6c534507614d4dc0b2e78baab649c35bfacbaec2ce18140b69',
     coinType: '0xf7152c05930480cd740d7311b5b8b45c6f488e3a53a11c3f74a6fac36a52e0d7::DBUSDC::DBUSDC',
   },
 } as const;
