@@ -35,7 +35,12 @@ import { SuiClient, getFullnodeUrl } from '@mysten/sui/client';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import { Transaction } from '@mysten/sui/transactions';
 import { MarginPoolContract, DeepBookConfig } from '@mysten/deepbook-v3';
-import { TESTNET_COINS, TESTNET_POOLS, TESTNET_MARGIN_POOLS } from '../testnet-config';
+import {
+  TESTNET_COINS,
+  TESTNET_POOLS,
+  TESTNET_MARGIN_POOLS,
+  TESTNET_PACKAGES,
+} from '../testnet-config';
 import { ToolkitConfig, MarginCoinType, MarginBalance } from './types';
 import { decodeSuiPrivateKey, SUI_PRIVATE_KEY_PREFIX } from '@mysten/sui/cryptography';
 import { hexOrBase64ToUint8Array, normalizePrivateKey } from '../utils/private-key';
@@ -124,6 +129,21 @@ export class DeepBookMarginToolkit {
     return Ed25519Keypair.fromSecretKey(normalizePrivateKey(hexOrBase64ToUint8Array(secretKey)));
   }
 
+  async #getExistingSupplierCapId() {
+    const type = `${TESTNET_PACKAGES.MARGIN_INITIAL_PACKAGE_ID}::margin_pool::SupplierCap`;
+    const resp = await this.suiClient.getOwnedObjects({
+      owner: this.address,
+      filter: {
+        StructType: type,
+      },
+      options: {
+        showType: true,
+      },
+    });
+
+    return resp.data?.[0]?.data?.objectId;
+  }
+
   /**
    * Initialize toolkit (creates Supplier Cap if not exists) | 初始化工具包（如不存在則創建 Supplier Cap）
    * @returns Supplier Cap ID | Supplier Cap ID
@@ -132,6 +152,13 @@ export class DeepBookMarginToolkit {
     // If Supplier Cap ID already exists, return it | 如果已有 Supplier Cap ID，直接返回
     if (this.supplierCapId) {
       return this.supplierCapId;
+    }
+
+    // Try get existing Supplier Cap | 嘗試獲取現有的 Supplier Cap
+    const existingCapId = await this.#getExistingSupplierCapId();
+    if (existingCapId) {
+      this.supplierCapId = existingCapId;
+      return existingCapId;
     }
 
     // Create new Supplier Cap | 創建新的 Supplier Cap
@@ -154,7 +181,8 @@ export class DeepBookMarginToolkit {
       const tx = new Transaction();
 
       // Use MarginPoolContract to create Supplier Cap | 使用 MarginPoolContract 創建 Supplier Cap
-      this.marginPoolContract.mintSupplierCap()(tx);
+      const cap = this.marginPoolContract.mintSupplierCap()(tx);
+      tx.transferObjects([cap], this.address);
 
       const result = await this.suiClient.signAndExecuteTransaction({
         signer: this.keypair,
@@ -164,6 +192,12 @@ export class DeepBookMarginToolkit {
           showObjectChanges: true,
         },
       });
+
+      if (result.errors && result.errors.length > 0) {
+        throw new Error(
+          `Transaction failed with errors: ${result.errors.map((e) => e.toString()).join(', ')}`
+        );
+      }
 
       // Find created Supplier Cap from objectChanges | 從 objectChanges 中找到創建的 Supplier Cap
       if (result.objectChanges) {
@@ -200,6 +234,12 @@ export class DeepBookMarginToolkit {
           showObjectChanges: true,
         },
       });
+
+      if (result.errors && result.errors.length > 0) {
+        throw new Error(
+          `Transaction failed with errors: ${result.errors.map((e) => e.toString()).join(', ')}`
+        );
+      }
 
       // Find created Referral from objectChanges | 從 objectChanges 中找到創建的 Referral
       if (result.objectChanges) {
@@ -241,7 +281,7 @@ export class DeepBookMarginToolkit {
       // SDK automatically handles unit conversion | SDK 自動處理單位轉換
       tx.add(this.marginPoolContract.supplyToMarginPool(coin, supplierCap, amount, referralId));
 
-      await this.suiClient.signAndExecuteTransaction({
+      const { errors } = await this.suiClient.signAndExecuteTransaction({
         signer: this.keypair,
         transaction: tx,
         options: {
@@ -250,6 +290,11 @@ export class DeepBookMarginToolkit {
         },
       });
 
+      if (errors && errors.length > 0) {
+        throw new Error(
+          `Transaction failed with errors: ${errors.map((e) => e.toString()).join(', ')}`
+        );
+      }
       return true;
     } catch (error: any) {
       throw new Error(`Failed to supply to margin pool: ${error.message || error}`);
@@ -284,7 +329,7 @@ export class DeepBookMarginToolkit {
       // Transfer withdrawn coin to sender | 將提取的 coin 轉給發送者
       tx.transferObjects([withdrawnCoin], this.address);
 
-      await this.suiClient.signAndExecuteTransaction({
+      const { errors } = await this.suiClient.signAndExecuteTransaction({
         signer: this.keypair,
         transaction: tx,
         options: {
@@ -292,6 +337,12 @@ export class DeepBookMarginToolkit {
           showObjectChanges: true,
         },
       });
+
+      if (errors && errors.length > 0) {
+        throw new Error(
+          `Transaction failed with errors: ${errors.map((e) => e.toString()).join(', ')}`
+        );
+      }
 
       return true;
     } catch (error: any) {
@@ -312,7 +363,7 @@ export class DeepBookMarginToolkit {
       // Add withdrawReferralFees call | 添加 withdrawReferralFees 調用
       tx.add(this.marginPoolContract.withdrawReferralFees(coin, referralId));
 
-      await this.suiClient.signAndExecuteTransaction({
+      const { errors } = await this.suiClient.signAndExecuteTransaction({
         signer: this.keypair,
         transaction: tx,
         options: {
@@ -322,6 +373,11 @@ export class DeepBookMarginToolkit {
         },
       });
 
+      if (errors && errors.length > 0) {
+        throw new Error(
+          `Transaction failed with errors: ${errors.map((e) => e.toString()).join(', ')}`
+        );
+      }
       return true;
     } catch (error: any) {
       throw new Error(`Failed to withdraw referral fees: ${error.message || error}`);
