@@ -5,7 +5,6 @@ import {
   MARGIN_POOL_PARAM_KEY_STRUCT_MAP,
   MARGIN_POOL_PARAM_KEYS,
   MARGIN_POOL_W_SUPPLIER_CAP_PARAM_KEYS,
-  TESTNET_PACKAGES,
 } from '../testnet-config';
 import { bcs } from '@mysten/sui/bcs';
 import { TESTNET_COINS, TESTNET_MARGIN_POOLS, TESTNET_POOLS } from '../testnet-config';
