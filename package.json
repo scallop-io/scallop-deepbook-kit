@@ -2,6 +2,25 @@
   "name": "scallop-deepbook-kit",
   "version": "0.1.1",
   "description": "A toolkit for integrating Scallop with DeepBook functionality",
+  "keywords": [
+    "scallop",
+    "deepbook",
+    "sui",
+    "defi",
+    "blockchain",
+    "dex"
+  ],
+  "author": "team@scallop.io",
+  "homepage": "https://github.com/scallop-io/scallop-deepbook-kit#readme",
+  "bugs": "https://github.com/scallop-io/scallop-deepbook-kit/issues",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/scallop-io/scallop-deepbook-kit.git"
+  },
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
   "main": "dist/index.js",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
@@ -13,12 +32,10 @@
       "default": "./dist/index.js"
     }
   },
-  "homepage": "https://github.com/scallop-io/scallop-deepbook-kit#readme",
-  "bugs": "https://github.com/scallop-io/scallop-deepbook-kit/issues",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/scallop-io/scallop-deepbook-kit.git"
-  },
+  "files": [
+    "dist",
+    "src"
+  ],
   "scripts": {
     "build": "npm run build:tsup",
     "build:prod": "tsup --env.NODE_ENV production",
@@ -37,16 +54,6 @@
     "prepare": "husky install",
     "prepublishOnly": "pnpm run clean && pnpm run build:prod"
   },
-  "keywords": [
-    "scallop",
-    "deepbook",
-    "sui",
-    "defi",
-    "blockchain",
-    "dex"
-  ],
-  "author": "",
-  "license": "MIT",
   "devDependencies": {
     "@types/jest": "^30.0.0",
     "@types/node": "^24.10.0",
