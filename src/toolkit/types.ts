@@ -71,3 +71,56 @@ export interface ReferralInfo {
   /** Owner address | 擁有者地址 */
   owner: string;
 }
+
+// ============================================================================
+// Margin Pool Parameter Types | Margin Pool 參數類型
+// ============================================================================
+
+/**
+ * Margin pool configuration parameters | Margin pool 配置參數
+ */
+export interface MarginPoolConfig {
+  /** Pool address | 池子地址 */
+  address: string;
+
+  /** Coin type | 幣種類型 */
+  coinType: string;
+
+  /** Initial version | 初始版本 */
+  initialVersion: number;
+
+  /** Supply cap | 供應上限 */
+  supplyCap: number;
+
+  /** Max utilization rate | 最大使用率 */
+  maxUtilizationRate: number;
+
+  /** Referral spread | Referral spread */
+  referralSpread: number;
+
+  /** Min borrow amount | 最小借款額 */
+  minBorrow: number;
+}
+
+/**
+ * Risk parameters for a trading pair | 交易對的風險參數
+ */
+export interface RiskParameters {
+  /** Min withdraw risk ratio | 最小提款風險比率 */
+  minWithdrawRiskRatio: number;
+
+  /** Min borrow risk ratio | 最小借款風險比率 */
+  minBorrowRiskRatio: number;
+
+  /** Liquidation risk ratio | 清算風險比率 */
+  liquidationRiskRatio: number;
+
+  /** Target liquidation risk ratio | 目標清算風險比率 */
+  targetLiquidationRiskRatio: number;
+
+  /** User liquidation reward | 用戶清算獎勵 */
+  userLiquidationReward: number;
+
+  /** Pool liquidation reward | 池子清算獎勵 */
+  poolLiquidationReward: number;
+}

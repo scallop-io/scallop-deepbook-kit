@@ -35,7 +35,12 @@ import { SuiClient, getFullnodeUrl } from '@mysten/sui/client';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import { Transaction } from '@mysten/sui/transactions';
 import { MarginPoolContract, DeepBookConfig } from '@mysten/deepbook-v3';
-import { TESTNET_COINS, TESTNET_POOLS, TESTNET_MARGIN_POOLS } from '../testnet-config';
+import {
+  TESTNET_COINS,
+  TESTNET_POOLS,
+  TESTNET_MARGIN_POOLS,
+  TESTNET_PACKAGES,
+} from '../testnet-config';
 import { ToolkitConfig, MarginCoinType, MarginBalance } from './types';
 import { decodeSuiPrivateKey, SUI_PRIVATE_KEY_PREFIX } from '@mysten/sui/cryptography';
 import { hexOrBase64ToUint8Array, normalizePrivateKey } from '../utils/private-key';
@@ -152,9 +157,17 @@ export class DeepBookMarginToolkit {
   async createSupplierCap(): Promise<string | null> {
     try {
       const tx = new Transaction();
+      tx.setSender(this.address);
 
-      // Use MarginPoolContract to create Supplier Cap | 使用 MarginPoolContract 創建 Supplier Cap
-      this.marginPoolContract.mintSupplierCap()(tx);
+      // Direct moveCall to get the returned object reference
+      // Based on SDK source: margin_pool::mint_supplier_cap
+      const supplierCap = tx.moveCall({
+        target: `${TESTNET_PACKAGES.MARGIN_PACKAGE_ID}::margin_pool::mint_supplier_cap`,
+        arguments: [tx.object(TESTNET_PACKAGES.MARGIN_REGISTRY_ID), tx.object.clock()],
+      });
+
+      // Transfer the created Supplier Cap to the sender
+      tx.transferObjects([supplierCap], tx.pure.address(this.address));
 
       const result = await this.suiClient.signAndExecuteTransaction({
         signer: this.keypair,
@@ -163,6 +176,7 @@ export class DeepBookMarginToolkit {
           showEffects: true,
           showObjectChanges: true,
         },
+        requestType: 'WaitForLocalExecution',
       });
 
       // Find created Supplier Cap from objectChanges | 從 objectChanges 中找到創建的 Supplier Cap
@@ -188,9 +202,26 @@ export class DeepBookMarginToolkit {
   async createSupplyReferral(coin: MarginCoinType): Promise<string | null> {
     try {
       const tx = new Transaction();
+      tx.setSender(this.address);
 
-      // Use MarginPoolContract to create supply Referral | 使用 MarginPoolContract 創建供應 Referral
-      this.marginPoolContract.mintSupplyReferral(coin)(tx);
+      // Get margin pool configuration
+      const marginPool = TESTNET_MARGIN_POOLS[coin];
+
+      // Use the initialVersion from config as the initial_shared_version
+      // Margin pools are shared objects on Sui
+      tx.moveCall({
+        target: `${TESTNET_PACKAGES.MARGIN_PACKAGE_ID}::margin_pool::mint_supply_referral`,
+        arguments: [
+          tx.sharedObjectRef({
+            objectId: marginPool.address,
+            initialSharedVersion: marginPool.initialVersion,
+            mutable: true,
+          }),
+          tx.object(TESTNET_PACKAGES.MARGIN_REGISTRY_ID),
+          tx.object.clock(),
+        ],
+        typeArguments: [marginPool.coinType],
+      });
 
       const result = await this.suiClient.signAndExecuteTransaction({
         signer: this.keypair,
@@ -199,6 +230,7 @@ export class DeepBookMarginToolkit {
           showEffects: true,
           showObjectChanges: true,
         },
+        requestType: 'WaitForLocalExecution',
       });
 
       // Find created Referral from objectChanges | 從 objectChanges 中找到創建的 Referral
@@ -248,6 +280,7 @@ export class DeepBookMarginToolkit {
           showEffects: true,
           showObjectChanges: true,
         },
+        requestType: 'WaitForLocalExecution',
       });
 
       return true;
@@ -291,6 +324,7 @@ export class DeepBookMarginToolkit {
           showEffects: true,
           showObjectChanges: true,
         },
+        requestType: 'WaitForLocalExecution',
       });
 
       return true;
@@ -320,6 +354,7 @@ export class DeepBookMarginToolkit {
           showObjectChanges: true,
           showBalanceChanges: true,
         },
+        requestType: 'WaitForLocalExecution',
       });
 
       return true;
