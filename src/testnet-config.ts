@@ -196,6 +196,11 @@ export const MARGIN_POOL_PARAM_KEYS = [
   'lastUpdateTimestamp',
 ] as const;
 
+export const MARGIN_POOL_W_SUPPLIER_CAP_PARAM_KEYS = [
+  'userSupplyShares',
+  'userSupplyAmount',
+] as const;
+
 export const MARGIN_POOL_PARAM_KEY_STRUCT_MAP = {
   supplyCap: 'U64',
   maxUtilizationRate: 'U64',
@@ -207,12 +212,12 @@ export const MARGIN_POOL_PARAM_KEY_STRUCT_MAP = {
   totalBorrow: 'U64',
   borrowShares: 'U64',
   lastUpdateTimestamp: 'U64',
-} as Record<(typeof MARGIN_POOL_PARAM_KEYS)[number], 'U64'>;
-
-export const MARGIN_POOL_W_SUPPLIER_CAP_PARAM_KEYS = [
-  'userSupplyShares',
-  'userSupplyAmount',
-] as const;
+  userSupplyShares: 'U64',
+  userSupplyAmount: 'U64',
+} as Record<
+  (typeof MARGIN_POOL_PARAM_KEYS)[number] | (typeof MARGIN_POOL_W_SUPPLIER_CAP_PARAM_KEYS)[number],
+  'U64'
+>;
 
 // ============================================================================
 // Utility Functions | 輔助函數

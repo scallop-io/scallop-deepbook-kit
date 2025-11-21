@@ -4,7 +4,7 @@ dist/
 node_modules/
 
 # pnpm
-pnpm-lock.yaml
+# pnpm-lock.yaml
 .pnpm-store/
 .pnpm-debug.log
 
@@ -12,7 +12,6 @@ pnpm-lock.yaml
 .env
 /data
 **.local.*
-/.github
 
 
 # AI files
