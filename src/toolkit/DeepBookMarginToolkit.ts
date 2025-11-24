@@ -179,10 +179,17 @@ export class DeepBookMarginToolkit {
   async createSupplierCap(): Promise<string | null> {
     try {
       const tx = new Transaction();
+      tx.setSender(this.address);
 
-      // Use MarginPoolContract to create Supplier Cap | 使用 MarginPoolContract 創建 Supplier Cap
-      const cap = this.marginPoolContract.mintSupplierCap()(tx);
-      tx.transferObjects([cap], this.address);
+      // Direct moveCall to get the returned object reference
+      // Based on SDK source: margin_pool::mint_supplier_cap
+      const supplierCap = tx.moveCall({
+        target: `${TESTNET_PACKAGES.MARGIN_PACKAGE_ID}::margin_pool::mint_supplier_cap`,
+        arguments: [tx.object(TESTNET_PACKAGES.MARGIN_REGISTRY_ID), tx.object.clock()],
+      });
+
+      // Transfer the created Supplier Cap to the sender
+      tx.transferObjects([supplierCap], tx.pure.address(this.address));
 
       const result = await this.suiClient.signAndExecuteTransaction({
         signer: this.keypair,
@@ -191,6 +198,7 @@ export class DeepBookMarginToolkit {
           showEffects: true,
           showObjectChanges: true,
         },
+        requestType: 'WaitForLocalExecution',
       });
 
       if (result.errors && result.errors.length > 0) {
@@ -222,9 +230,26 @@ export class DeepBookMarginToolkit {
   async createSupplyReferral(coin: MarginCoinType): Promise<string | null> {
     try {
       const tx = new Transaction();
+      tx.setSender(this.address);
 
-      // Use MarginPoolContract to create supply Referral | 使用 MarginPoolContract 創建供應 Referral
-      this.marginPoolContract.mintSupplyReferral(coin)(tx);
+      // Get margin pool configuration
+      const marginPool = TESTNET_MARGIN_POOLS[coin];
+
+      // Use the initialVersion from config as the initial_shared_version
+      // Margin pools are shared objects on Sui
+      tx.moveCall({
+        target: `${TESTNET_PACKAGES.MARGIN_PACKAGE_ID}::margin_pool::mint_supply_referral`,
+        arguments: [
+          tx.sharedObjectRef({
+            objectId: marginPool.address,
+            initialSharedVersion: marginPool.initialVersion,
+            mutable: true,
+          }),
+          tx.object(TESTNET_PACKAGES.MARGIN_REGISTRY_ID),
+          tx.object.clock(),
+        ],
+        typeArguments: [marginPool.coinType],
+      });
 
       const result = await this.suiClient.signAndExecuteTransaction({
         signer: this.keypair,
@@ -233,6 +258,7 @@ export class DeepBookMarginToolkit {
           showEffects: true,
           showObjectChanges: true,
         },
+        requestType: 'WaitForLocalExecution',
       });
 
       if (result.errors && result.errors.length > 0) {
@@ -288,6 +314,7 @@ export class DeepBookMarginToolkit {
           showEffects: true,
           showObjectChanges: true,
         },
+        requestType: 'WaitForLocalExecution',
       });
 
       if (errors && errors.length > 0) {
@@ -336,6 +363,7 @@ export class DeepBookMarginToolkit {
           showEffects: true,
           showObjectChanges: true,
         },
+        requestType: 'WaitForLocalExecution',
       });
 
       if (errors && errors.length > 0) {
@@ -371,6 +399,7 @@ export class DeepBookMarginToolkit {
           showObjectChanges: true,
           showBalanceChanges: true,
         },
+        requestType: 'WaitForLocalExecution',
       });
 
       if (errors && errors.length > 0) {
