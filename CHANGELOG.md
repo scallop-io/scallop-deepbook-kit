@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.1.4](https://github.com/scallop-io/scallop-deepbook-kit/compare/v0.1.3...v0.1.4) (2025-11-24)
+
+### Fixed
+
+- Fix interest calculation and model ([7dec47a](https://github.com/scallop-io/scallop-deepbook-kit/pull/9/commits/7dec47a9c756b8d8b1f52dfb728fff276ef7d62e))
+
 ### [0.1.3](https://github.com/scallop-io/scallop-deepbook-kit/compare/v0.1.2...v0.1.3) (2025-11-20)
 
 ### Changes
