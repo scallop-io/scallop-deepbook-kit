@@ -10,17 +10,17 @@ import { bcs } from '@mysten/sui/bcs';
 import { TESTNET_COINS, TESTNET_MARGIN_POOLS, TESTNET_POOLS } from '../testnet-config';
 import { NetworkType } from './types';
 import { BigNumber } from 'bignumber.js';
+import { mul, normalize } from '../utils/math';
 
 type MarginPoolParamKey = (typeof MARGIN_POOL_PARAM_KEYS)[number];
 type MarginPoolWithSupplierCapParamKey = (typeof MARGIN_POOL_W_SUPPLIER_CAP_PARAM_KEYS)[number];
 type InterestConfig = {
-  midKink: number;
   highKink: number;
   baseBorrowApr: number;
-  midBorrowApr: number;
-  highBorrowApr: number;
+  borrowAprOnHighKink: number;
   maxBorrowApr: number;
-  borrowApr: number;
+  supplyApr: number;
+  utilizationRate: number;
 };
 export type MarginPoolParams = Record<
   MarginPoolParamKey | MarginPoolWithSupplierCapParamKey,
@@ -208,13 +208,12 @@ export class DeepBookMarginPool {
       userSupplyShares: 0,
       userSupplyAmount: 0,
       decimals: 0,
-      midKink: 0,
       highKink: 0,
       baseBorrowApr: 0,
-      midBorrowApr: 0,
-      highBorrowApr: 0,
+      borrowAprOnHighKink: 0,
       maxBorrowApr: 0,
-      borrowApr: 0,
+      supplyApr: 0,
+      utilizationRate: 0,
       ...coin,
     };
 
@@ -242,94 +241,78 @@ export class DeepBookMarginPool {
     return formatted;
   }
 
-  #getCurrentBorrowApr(utilizationRate: bigint, interestConfig: RawInterestConfig) {
-    const baseRate = BigInt(interestConfig.base_rate); // B
-    const baseSlope = BigInt(interestConfig.base_slope); // S
-    const excessSlope = BigInt(interestConfig.excess_slope); // E
-    const optimalUtil = BigInt(interestConfig.optimal_utilization); // Uopt
+  /**
+   * Compute the borrow APR based on utilization and interest config.
+   *
+   * if (U < optimal) {
+   *   r(U) = base_rate + mul(U, base_slope)
+   * } else {
+   *   r(U) = base_rate + mul(optimal, base_slope) + mul(U - optimal, excess_slope)
+   * }
+   */
+  #computeBorrowAprAtUtil(
+    util: bigint, // 1e9-scaled utilization
+    cfg: RawInterestConfig
+  ): bigint {
+    const baseRate = BigInt(cfg.base_rate);
+    const baseSlope = BigInt(cfg.base_slope);
+    const excessSlope = BigInt(cfg.excess_slope);
+    const optimalUtil = BigInt(cfg.optimal_utilization);
 
-    // clamp U to [0, 1e9]
-    const U =
-      utilizationRate < 0n
-        ? 0n
-        : utilizationRate > BigInt(FLOAT_SCALAR)
-          ? BigInt(FLOAT_SCALAR)
-          : BigInt(utilizationRate);
-
-    if (U <= optimalUtil) {
-      // r(U) = B + S * U / Uopt
-      return baseRate + (baseSlope * U) / optimalUtil;
+    if (util < optimalUtil) {
+      return baseRate + mul(util, baseSlope);
     }
 
-    // r(U) = B + S + E * (U - Uopt) / (1 - Uopt)
-    return (
-      baseRate +
-      baseSlope +
-      (excessSlope * (U - optimalUtil)) / (BigInt(FLOAT_SCALAR) - optimalUtil)
-    );
+    return baseRate + mul(optimalUtil, baseSlope) + mul(util - optimalUtil, excessSlope);
   }
 
-  #calculateKinksAndBorrowApr(
+  #calculateKinksAndRate(
     interestConfig: RawInterestConfig,
     marginPoolConfig: RawMarginPoolConfig,
-    state: RawStatePoolConfig
+    state: RawStatePoolConfig,
+    borrowApr: number
   ) {
-    const baseRate = BigInt(interestConfig.base_rate);
-    const baseSlope = BigInt(interestConfig.base_slope);
-    const excessSlope = BigInt(interestConfig.excess_slope);
-    const optimalUtil = BigInt(interestConfig.optimal_utilization);
-    const maxUtil = BigInt(marginPoolConfig.max_utilization_rate);
+    const highKink = BigInt(interestConfig.optimal_utilization); // v0
+    const maxKink = BigInt(marginPoolConfig.max_utilization_rate); // U_max
 
-    // Kinks (still 1e9-scaled)
-    const midKink = optimalUtil;
-    const highKink = maxUtil;
+    // const midBorrowApr = this.#computeBorrowAprAtUtil(midKink, interestConfig);
+    const borrowAprOnHighKink = this.#computeBorrowAprAtUtil(highKink, interestConfig);
+    const maxBorrowApr = this.#computeBorrowAprAtUtil(maxKink, interestConfig);
 
-    // APRs in 1e9 scale
-    const baseBorrowApr = baseRate;
-    const midBorrowApr = baseRate + baseSlope;
-
-    // highBorrowApr at U = maxUtil
-    // r(U) = base + slope + excess * (U - optimal) / (1 - optimal)
-    const highBorrowApr =
-      baseRate +
-      baseSlope +
-      (excessSlope * (maxUtil - optimalUtil)) / (1_000_000_000n - optimalUtil);
-
-    // maxBorrowApr at U = 1.0 (i.e. 1e9)
-    const maxBorrowApr = baseRate + baseSlope + excessSlope;
-    const currentBorrowApr = this.#getCurrentBorrowApr(
-      BigInt(
-        BigNumber(state.total_borrow)
-          .dividedBy(state.total_supply)
-          .shiftedBy(9)
-          .decimalPlaces(0)
-          .toString()
-      ),
-      interestConfig
+    const utilizationRate = BigInt(
+      BigNumber(state.total_borrow)
+        .dividedBy(state.total_supply)
+        .shiftedBy(9)
+        .decimalPlaces(0)
+        .toString()
+    );
+    const supplyApr = mul(
+      mul(BigInt(borrowApr), utilizationRate),
+      BigInt(FLOAT_SCALAR) - BigInt(marginPoolConfig.protocol_spread)
     );
 
-    const normalize = (value: bigint) => BigNumber(value).dividedBy(FLOAT_SCALAR).toNumber();
-
     return {
-      // raw 1e9-scaled values (BigInt)
+      // raw 1e9-scaled values
       raw: {
-        midKink,
-        highKink,
-        baseBorrowApr,
-        midBorrowApr,
-        highBorrowApr,
-        maxBorrowApr,
-        borrowApr: currentBorrowApr,
+        baseBorrowApr: interestConfig.base_rate,
+        // midKink, // utilization at kink1
+        highKink, // utilization at kink2
+        // midBorrowApr, // APR at midKink
+        borrowAprOnHighKink, // APR at highKink
+        maxBorrowApr, // APR at U = 1.0
+        supplyApr,
+        utilizationRate,
       },
-      // convenience: normalized numbers (e.g. 0.125 = 12.5%)
+      // convenience normalized numbers
       normalized: {
-        midKink: normalize(midKink),
+        baseBorrowApr: normalize(BigInt(interestConfig.base_rate)),
+        // midKink: normalize(midKink),
         highKink: normalize(highKink),
-        baseBorrowApr: normalize(baseBorrowApr),
-        midBorrowApr: normalize(midBorrowApr),
-        highBorrowApr: normalize(highBorrowApr),
+        // midBorrowApr: normalize(midBorrowApr),
+        borrowAprOnHighKink: normalize(borrowAprOnHighKink),
         maxBorrowApr: normalize(maxBorrowApr),
-        borrowApr: normalize(currentBorrowApr),
+        supplyApr: normalize(supplyApr),
+        utilizationRate: normalize(utilizationRate),
       },
     };
   }
@@ -339,7 +322,7 @@ export class DeepBookMarginPool {
    * @param coinKey - Asset key.
    * @returns Interest configuration data including kinks and APRs.
    */
-  async #getInterestConfig(coinKey: string) {
+  async #getInterestConfig(coinKey: string, interestRate: number) {
     const { address } = this.dbConfig.getMarginPool(coinKey);
     const response = await this.suiClient.getObject({
       id: address,
@@ -353,10 +336,11 @@ export class DeepBookMarginPool {
     const interestConfig = config.interest_config.fields as RawInterestConfig;
     const marginPoolConfig = config.margin_pool_config.fields as RawMarginPoolConfig;
     const statePoolConfig = fields.state.fields as RawStatePoolConfig;
-    const { normalized } = this.#calculateKinksAndBorrowApr(
+    const { normalized } = this.#calculateKinksAndRate(
       interestConfig,
       marginPoolConfig,
-      statePoolConfig
+      statePoolConfig,
+      interestRate
     );
     return normalized;
   }
@@ -426,10 +410,13 @@ export class DeepBookMarginPool {
       sender: this.dbConfig.address,
     });
 
-    const interestData = await this.#getInterestConfig(coinKey);
     const formattedResult = this.#formatResult(
       this.#parseInspectResultToBcsStructs(inspectResult, allKeys),
       coinKey
+    );
+    const interestData = await this.#getInterestConfig(
+      coinKey,
+      formattedResult.interestRate * FLOAT_SCALAR
     );
 
     return {
