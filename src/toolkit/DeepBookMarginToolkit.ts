@@ -130,7 +130,7 @@ export class DeepBookMarginToolkit {
   }
 
   async #getExistingSupplierCapId() {
-    const type = `${TESTNET_PACKAGES.MARGIN_INITIAL_PACKAGE_ID}::margin_pool::SupplierCap`;
+    const type = `${TESTNET_PACKAGES.MARGIN_OBJECT.V1}::margin_pool::SupplierCap`;
     const resp = await this.suiClient.getOwnedObjects({
       owner: this.address,
       filter: {
