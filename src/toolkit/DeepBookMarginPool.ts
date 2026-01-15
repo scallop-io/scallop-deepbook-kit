@@ -208,7 +208,7 @@ export class DeepBookMarginPool {
       lastUpdateTimestamp: 0,
       userSupplyShares: 0,
       userSupplyAmount: 0,
-      decimals: 0,
+      decimals: this.dbConfig.getCoin(coinKey).scalar.toString().length - 1,
       highKink: 0,
       baseBorrowApr: 0,
       borrowAprOnHighKink: 0,

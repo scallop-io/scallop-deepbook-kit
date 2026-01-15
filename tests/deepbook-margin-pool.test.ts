@@ -14,6 +14,9 @@ describe('DeepBookMarginPool Tests', () => {
 
     const marginPoolMainnet = new DeepBookMarginPool({ env: 'mainnet' });
     expect(marginPoolMainnet.env).toBe('mainnet');
+
+    const marginPoolDefault = new DeepBookMarginPool();
+    expect(marginPoolDefault.env).toBe('mainnet');
   });
 
   it('Should return pool parameters', async () => {

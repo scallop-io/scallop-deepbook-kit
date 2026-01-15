@@ -93,6 +93,7 @@ export class DeepBookMarginToolkit {
     return Ed25519Keypair.fromSecretKey(normalizePrivateKey(hexOrBase64ToUint8Array(secretKey)));
   }
 
+  // @TODO: Handle more than 1 supplier cap in future
   async #getExistingSupplierCapId() {
     const type = `${this.dbConfig.MARGIN_PACKAGE_ID}::margin_pool::SupplierCap`;
     const resp = await this.suiClient.getOwnedObjects({
