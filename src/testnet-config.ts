@@ -120,22 +120,14 @@ export const TESTNET_MARGIN_POOLS = {
   SUI: {
     // Actual margin pool address on testnet (updated 2025-11-20) | 實際存在於 testnet 上的 Margin Pool 地址（2025-11-20 更新）
     address: '0xe620d6a5390e57e88baff18af89383130d4210eb496a024edcd62f270a655af7',
-    coinType: '0x2::sui::SUI',
-    initialVersion: 658877881,
-    supplyCap: 1000000, // 供應上限 | Supply cap
-    maxUtilizationRate: 0.9, // 最大使用率 | Max utilization rate
-    referralSpread: 0.1, // Referral spread
-    minBorrow: 0.1, // 最小借款額 | Min borrow amount
+    type: '0x2::sui::SUI',
+    initialSharedVersion: 658877881,
   },
   DBUSDC: {
     // Actual margin pool address on testnet (updated 2025-11-20) | 實際存在於 testnet 上的 Margin Pool 地址（2025-11-20 更新）
     address: '0xfd0dc290a120ad6c534507614d4dc0b2e78baab649c35bfacbaec2ce18140b69',
-    coinType: '0xf7152c05930480cd740d7311b5b8b45c6f488e3a53a11c3f74a6fac36a52e0d7::DBUSDC::DBUSDC',
-    initialVersion: 658877215,
-    supplyCap: 1000000, // 供應上限 | Supply cap
-    maxUtilizationRate: 0.95, // 最大使用率 | Max utilization rate
-    referralSpread: 0.1, // Referral spread
-    minBorrow: 0.1, // 最小借款額 | Min borrow amount
+    type: '0xf7152c05930480cd740d7311b5b8b45c6f488e3a53a11c3f74a6fac36a52e0d7::DBUSDC::DBUSDC',
+    initialSharedVersion: 658877215,
   },
 } as const;
 
@@ -179,82 +171,7 @@ export const TESTNET_POOL_KEYS = [
   'WAL_SUI',
 ] as const;
 
+export const TESTNET_COIN_KEYS = ['DEEP', 'SUI', 'DBUSDC', 'DBUSDT', 'WAL'] as const;
+
 export type TestnetPoolKey = (typeof TESTNET_POOL_KEYS)[number];
-
-// ============================================================================
-// Margin Pool Contract Parameter Keys | Margin Pool 合約參數鍵
-// ============================================================================
-
-export const MARGIN_POOL_PARAM_KEYS = [
-  'supplyCap',
-  'maxUtilizationRate',
-  'protocolSpread',
-  'minBorrow',
-  'interestRate',
-  'totalSupply',
-  'supplyShares',
-  'totalBorrow',
-  'borrowShares',
-  'lastUpdateTimestamp',
-] as const;
-
-export const MARGIN_POOL_W_SUPPLIER_CAP_PARAM_KEYS = [
-  'userSupplyShares',
-  'userSupplyAmount',
-] as const;
-
-export const MARGIN_POOL_PARAM_KEY_STRUCT_MAP = {
-  supplyCap: 'U64',
-  maxUtilizationRate: 'U64',
-  protocolSpread: 'U64',
-  minBorrow: 'U64',
-  interestRate: 'U64',
-  totalSupply: 'U64',
-  supplyShares: 'U64',
-  totalBorrow: 'U64',
-  borrowShares: 'U64',
-  lastUpdateTimestamp: 'U64',
-  userSupplyShares: 'U64',
-  userSupplyAmount: 'U64',
-} as Record<
-  (typeof MARGIN_POOL_PARAM_KEYS)[number] | (typeof MARGIN_POOL_W_SUPPLIER_CAP_PARAM_KEYS)[number],
-  'U64'
->;
-
-// ============================================================================
-// Utility Functions | 輔助函數
-// ============================================================================
-
-/**
- * Get full pool configuration | 取得 Pool 的完整配置
- */
-export function getPoolConfig(poolKey: TestnetPoolKey) {
-  return TESTNET_POOLS[poolKey];
-}
-
-/**
- * Get full coin configuration | 取得代幣的完整配置
- */
-export function getCoinConfig(coinSymbol: keyof typeof TESTNET_COINS) {
-  return TESTNET_COINS[coinSymbol];
-}
-
-/**
- * Format coin amount (convert from smallest unit to human-readable) | 格式化代幣數量（從最小單位轉換為人類可讀）
- */
-export function formatCoinAmount(
-  amount: number | bigint,
-  coinSymbol: keyof typeof TESTNET_COINS
-): string {
-  const config = TESTNET_COINS[coinSymbol];
-  const value = Number(amount) / config.scalar;
-  return value.toFixed(config.decimals);
-}
-
-/**
- * Parse coin amount (convert from human-readable to smallest unit) | 解析代幣數量（從人類可讀轉換為最小單位）
- */
-export function parseCoinAmount(amount: number, coinSymbol: keyof typeof TESTNET_COINS): number {
-  const config = TESTNET_COINS[coinSymbol];
-  return Math.floor(amount * config.scalar);
-}
+export type TestnetCoinKey = (typeof TESTNET_COIN_KEYS)[number];

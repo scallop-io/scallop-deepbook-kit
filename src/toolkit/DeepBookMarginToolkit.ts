@@ -34,7 +34,13 @@
 import { SuiClient, getFullnodeUrl } from '@mysten/sui/client';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import { Transaction } from '@mysten/sui/transactions';
-import { MarginPoolContract, DeepBookConfig } from '@mysten/deepbook-v3';
+import {
+  MarginPoolContract,
+  DeepBookConfig,
+  CoinMap,
+  PoolMap,
+  MarginPool,
+} from '@mysten/deepbook-v3';
 import {
   TESTNET_COINS,
   TESTNET_POOLS,
@@ -44,7 +50,8 @@ import {
 import { ToolkitConfig, MarginCoinType, MarginBalance } from './types';
 import { decodeSuiPrivateKey, SUI_PRIVATE_KEY_PREFIX } from '@mysten/sui/cryptography';
 import { hexOrBase64ToUint8Array, normalizePrivateKey } from '../utils/private-key';
-
+import { MAINNET_COINS, MAINNET_MARGIN_POOLS, MAINNET_POOLS } from '../mainnet-config';
+2;
 /**
  * Main DeepBook Margin Toolkit class | DeepBook Margin Toolkit 主類別
  */
@@ -54,66 +61,38 @@ export class DeepBookMarginToolkit {
   private address: string;
   private marginPoolContract: MarginPoolContract;
   private supplierCapId?: string;
+  private coins: CoinMap;
+  private pools: PoolMap;
+  private marginPools: Record<string, MarginPool & { initialSharedVersion: number }>;
 
-  constructor(config: ToolkitConfig) {
+  constructor({ network, fullnodeUrl, supplierCapId, privateKey }: ToolkitConfig) {
     // Initialize SuiClient | 初始化 SuiClient
-    const rpcUrl = config.fullnodeUrl ?? getFullnodeUrl(config.network);
+    const rpcUrl = fullnodeUrl ?? getFullnodeUrl(network);
     this.suiClient = new SuiClient({ url: rpcUrl });
 
     // Initialize keypair | 初始化密鑰對
-    this.keypair = this.#parseSecretKey(config.privateKey);
+    this.keypair = this.#parseSecretKey(privateKey);
     this.address = this.keypair.getPublicKey().toSuiAddress();
 
     // Store Supplier Cap ID if provided | 儲存 Supplier Cap ID（如果提供）
-    this.supplierCapId = config.supplierCapId;
+    this.supplierCapId = supplierCapId;
 
     // Prepare coins configuration | 準備 coins 配置
-    const coins = {
-      DEEP: {
-        address: TESTNET_COINS.DEEP.address,
-        type: TESTNET_COINS.DEEP.type,
-        scalar: TESTNET_COINS.DEEP.scalar,
-      },
-      SUI: {
-        address: TESTNET_COINS.SUI.address,
-        type: TESTNET_COINS.SUI.type,
-        scalar: TESTNET_COINS.SUI.scalar,
-      },
-      DBUSDC: {
-        address: TESTNET_COINS.DBUSDC.address,
-        type: TESTNET_COINS.DBUSDC.type,
-        scalar: TESTNET_COINS.DBUSDC.scalar,
-      },
-    };
+    this.coins = network === 'mainnet' ? MAINNET_COINS : TESTNET_COINS;
 
     // Prepare pools configuration | 準備 pools 配置
-    const pools = {
-      SUI_DBUSDC: {
-        address: TESTNET_POOLS.SUI_DBUSDC.address,
-        baseCoin: TESTNET_POOLS.SUI_DBUSDC.baseCoin,
-        quoteCoin: TESTNET_POOLS.SUI_DBUSDC.quoteCoin,
-      },
-    };
+    this.pools = network === 'mainnet' ? MAINNET_POOLS : TESTNET_POOLS;
 
     // Prepare margin pools configuration | 準備 margin pools 配置
-    const marginPools = {
-      SUI: {
-        address: TESTNET_MARGIN_POOLS.SUI.address,
-        type: TESTNET_MARGIN_POOLS.SUI.coinType,
-      },
-      DBUSDC: {
-        address: TESTNET_MARGIN_POOLS.DBUSDC.address,
-        type: TESTNET_MARGIN_POOLS.DBUSDC.coinType,
-      },
-    };
+    this.marginPools = network === 'mainnet' ? MAINNET_MARGIN_POOLS : TESTNET_MARGIN_POOLS;
 
     // Create DeepBookConfig | 創建 DeepBookConfig
     const deepbookConfig = new DeepBookConfig({
       address: this.address,
-      env: config.network,
-      coins,
-      pools,
-      marginPools,
+      env: network,
+      coins: this.coins,
+      pools: this.pools,
+      marginPools: this.marginPools,
     });
 
     // Initialize MarginPoolContract | 初始化 MarginPoolContract
@@ -233,7 +212,10 @@ export class DeepBookMarginToolkit {
       tx.setSender(this.address);
 
       // Get margin pool configuration
-      const marginPool = TESTNET_MARGIN_POOLS[coin];
+      const marginPool = this.marginPools[coin];
+      if (!marginPool) {
+        throw new Error(`Margin pool configuration not found for coin: ${coin}`);
+      }
 
       // Use the initialVersion from config as the initial_shared_version
       // Margin pools are shared objects on Sui
@@ -242,13 +224,13 @@ export class DeepBookMarginToolkit {
         arguments: [
           tx.sharedObjectRef({
             objectId: marginPool.address,
-            initialSharedVersion: marginPool.initialVersion,
+            initialSharedVersion: marginPool.initialSharedVersion,
             mutable: true,
           }),
           tx.object(TESTNET_PACKAGES.MARGIN_REGISTRY_ID),
           tx.object.clock(),
         ],
-        typeArguments: [marginPool.coinType],
+        typeArguments: [marginPool.type],
       });
 
       const result = await this.suiClient.signAndExecuteTransaction({

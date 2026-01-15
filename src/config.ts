@@ -5,6 +5,9 @@
  */
 
 import dotenv from 'dotenv';
+import { TESTNET_COINS, TESTNET_POOLS } from './testnet-config';
+import { MAINNET_COINS, MAINNET_POOLS } from './mainnet-config';
+import { PoolMap } from '@mysten/deepbook-v3';
 
 // Initialize dotenv | 初始化 dotenv
 dotenv.config();
@@ -128,3 +131,89 @@ export const displayConfig = (): void => {
   console.log('━'.repeat(60));
   console.log('');
 };
+
+// ============================================================================
+type Env = 'mainnet' | 'testnet';
+const DEFAULT_ENV: Env = 'mainnet';
+
+// 1) Define a shared coin config shape (include only what you actually need)
+type CoinConfig = {
+  scalar: number;
+  decimals: number;
+  address?: string;
+  type?: string;
+  symbol?: string;
+};
+
+// 2) Tell TS that both env maps follow this shape
+const COINS_BY_ENV: Record<Env, Record<string, CoinConfig>> = {
+  mainnet: MAINNET_COINS as Record<string, CoinConfig>,
+  testnet: TESTNET_COINS as Record<string, CoinConfig>,
+};
+
+const POOLS_BY_ENV: Record<Env, PoolMap> = {
+  mainnet: MAINNET_POOLS,
+  testnet: TESTNET_POOLS,
+};
+
+// ----------------------------------------------------------------------------
+// Utility Functions (env optional, default mainnet)
+// ----------------------------------------------------------------------------
+
+export function getPoolConfig(poolKey: string, env: Env = DEFAULT_ENV) {
+  return POOLS_BY_ENV[env][poolKey];
+}
+
+export function getCoinConfig(coinSymbol: string, env: Env = DEFAULT_ENV) {
+  return COINS_BY_ENV[env][coinSymbol];
+}
+
+export function formatCoinAmount(
+  amount: number | bigint,
+  coinSymbol: string,
+  env: Env = DEFAULT_ENV
+): string {
+  const config = COINS_BY_ENV[env][coinSymbol];
+  if (!config) throw new Error(`Coin config not found for symbol: ${coinSymbol} in env: ${env}`);
+  const { scalar, decimals } = config;
+
+  if (typeof amount === 'number') {
+    return (amount / scalar).toFixed(decimals);
+  }
+
+  // bigint-safe formatting
+  const scalarBI = BigInt(scalar);
+  const integer = amount / scalarBI;
+  const fraction = amount % scalarBI;
+
+  const fracStr = fraction.toString().padStart(decimals, '0');
+  return `${integer.toString()}.${fracStr}`;
+}
+
+export function parseCoinAmount(
+  amount: number,
+  coinSymbol: string,
+  env: Env = DEFAULT_ENV
+): number {
+  const config = COINS_BY_ENV[env][coinSymbol];
+  if (!config) throw new Error(`Coin config not found for symbol: ${coinSymbol} in env: ${env}`);
+
+  const { scalar } = config;
+  return Math.floor(amount * scalar);
+}
+
+// recommended on-chain safe parse
+export function parseCoinAmountBigInt(
+  amount: string | number,
+  coinSymbol: string,
+  env: Env = DEFAULT_ENV
+): bigint {
+  const config = COINS_BY_ENV[env][coinSymbol];
+  if (!config) throw new Error(`Coin config not found for symbol: ${coinSymbol} in env: ${env}`);
+
+  const { scalar, decimals } = config;
+  const [intPart = '0', fracRaw = ''] = String(amount).trim().split('.');
+  const frac = fracRaw.slice(0, decimals).padEnd(decimals, '0');
+
+  return BigInt(intPart) * BigInt(scalar) + BigInt(frac || '0');
+}

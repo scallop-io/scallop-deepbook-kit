@@ -1,19 +1,20 @@
 import { DeepBookConfig, FLOAT_SCALAR, MarginPoolContract } from '@mysten/deepbook-v3';
 import { DevInspectResults, getFullnodeUrl, SuiClient } from '@mysten/sui/client';
 import { Transaction } from '@mysten/sui/transactions';
-import {
-  MARGIN_POOL_PARAM_KEY_STRUCT_MAP,
-  MARGIN_POOL_PARAM_KEYS,
-  MARGIN_POOL_W_SUPPLIER_CAP_PARAM_KEYS,
-} from '../testnet-config';
 import { bcs } from '@mysten/sui/bcs';
 import { TESTNET_COINS, TESTNET_MARGIN_POOLS, TESTNET_POOLS } from '../testnet-config';
 import { NetworkType } from './types';
 import { BigNumber } from 'bignumber.js';
 import { mul, normalize } from '../utils/math';
+import {
+  MARGIN_POOL_PARAM_KEY_STRUCT_MAP,
+  MARGIN_POOL_PARAM_KEYS,
+  MARGIN_POOL_W_SUPPLIER_CAP_PARAM_KEYS,
+  MarginPoolParamKey,
+  MarginPoolWithSupplierCapParamKey,
+} from '../margin-pool-config';
+import { MAINNET_COINS, MAINNET_MARGIN_POOLS, MAINNET_POOLS } from '../mainnet-config';
 
-type MarginPoolParamKey = (typeof MARGIN_POOL_PARAM_KEYS)[number];
-type MarginPoolWithSupplierCapParamKey = (typeof MARGIN_POOL_W_SUPPLIER_CAP_PARAM_KEYS)[number];
 type InterestConfig = {
   highKink: number;
   baseBorrowApr: number;
@@ -81,7 +82,7 @@ export class DeepBookMarginPool {
    * @param suiClient - Optional SuiClient; defaults to fullnode client based on config env.
    */
   constructor(
-    env: NetworkType = 'testnet',
+    env: NetworkType = 'mainnet',
     address = '',
     readonly suiClient = new SuiClient({ url: getFullnodeUrl(env) }),
     dbConfig?: DeepBookConfig
@@ -91,18 +92,9 @@ export class DeepBookMarginPool {
       new DeepBookConfig({
         env,
         address,
-        coins: TESTNET_COINS,
-        pools: TESTNET_POOLS,
-        marginPools: {
-          SUI: {
-            address: TESTNET_MARGIN_POOLS.SUI.address,
-            type: TESTNET_MARGIN_POOLS.SUI.coinType,
-          },
-          DBUSDC: {
-            address: TESTNET_MARGIN_POOLS.DBUSDC.address,
-            type: TESTNET_MARGIN_POOLS.DBUSDC.coinType,
-          },
-        },
+        coins: env === 'testnet' ? TESTNET_COINS : MAINNET_COINS,
+        pools: env === 'testnet' ? TESTNET_POOLS : MAINNET_POOLS,
+        marginPools: env === 'testnet' ? TESTNET_MARGIN_POOLS : MAINNET_MARGIN_POOLS,
       });
     // Initialize smart contract wrapper
     this.marginPoolContract = new MarginPoolContract(this.dbConfig);
@@ -295,9 +287,7 @@ export class DeepBookMarginPool {
       // raw 1e9-scaled values
       raw: {
         baseBorrowApr: interestConfig.base_rate,
-        // midKink, // utilization at kink1
         highKink, // utilization at kink2
-        // midBorrowApr, // APR at midKink
         borrowAprOnHighKink, // APR at highKink
         maxBorrowApr, // APR at U = 1.0
         supplyApr,
