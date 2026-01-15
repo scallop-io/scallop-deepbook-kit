@@ -1,4 +1,4 @@
-import { MARGIN_POOL_PARAM_KEYS } from '../src/testnet-config';
+import { MARGIN_POOL_PARAM_KEYS } from '../src/margin-pool-config';
 import { DeepBookMarginPool } from '../src/toolkit';
 
 describe('DeepBookMarginPool Tests', () => {

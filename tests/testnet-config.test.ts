@@ -2,14 +2,8 @@
  * Tests for testnet configuration | 測試網配置測試
  */
 
-import {
-  TESTNET_COINS,
-  TESTNET_MARGIN_POOLS,
-  formatCoinAmount,
-  parseCoinAmount,
-  getPoolConfig,
-  getCoinConfig,
-} from '../src/testnet-config';
+import { TESTNET_COINS, TESTNET_MARGIN_POOLS } from '../src/testnet-config';
+import { formatCoinAmount, getCoinConfig, getPoolConfig, parseCoinAmount } from '../src/config';
 
 describe('Testnet Configuration | 測試網配置', () => {
   describe('TESTNET_COINS', () => {
@@ -70,8 +64,8 @@ describe('Testnet Configuration | 測試網配置', () => {
     it('should return correct pool configuration | 應返回正確的池子配置', () => {
       const config = getPoolConfig('SUI_DBUSDC');
       expect(config).toBeDefined();
-      expect(config.baseCoin).toBe('SUI');
-      expect(config.quoteCoin).toBe('DBUSDC');
+      expect(config!.baseCoin).toBe('SUI');
+      expect(config!.quoteCoin).toBe('DBUSDC');
     });
   });
 
@@ -79,8 +73,8 @@ describe('Testnet Configuration | 測試網配置', () => {
     it('should return correct coin configuration | 應返回正確的代幣配置', () => {
       const config = getCoinConfig('SUI');
       expect(config).toBeDefined();
-      expect(config.decimals).toBe(9);
-      expect(config.scalar).toBe(1_000_000_000);
+      expect(config!.decimals).toBe(9);
+      expect(config!.scalar).toBe(1_000_000_000);
     });
   });
 
@@ -88,13 +82,13 @@ describe('Testnet Configuration | 測試網配置', () => {
     it('should have SUI margin pool | 應有 SUI margin pool', () => {
       expect(TESTNET_MARGIN_POOLS.SUI).toBeDefined();
       expect(TESTNET_MARGIN_POOLS.SUI.address).toBeTruthy();
-      expect(TESTNET_MARGIN_POOLS.SUI.coinType).toContain('SUI');
+      expect(TESTNET_MARGIN_POOLS.SUI.type).toContain('SUI');
     });
 
     it('should have DBUSDC margin pool | 應有 DBUSDC margin pool', () => {
       expect(TESTNET_MARGIN_POOLS.DBUSDC).toBeDefined();
       expect(TESTNET_MARGIN_POOLS.DBUSDC.address).toBeTruthy();
-      expect(TESTNET_MARGIN_POOLS.DBUSDC.coinType).toContain('DBUSDC');
+      expect(TESTNET_MARGIN_POOLS.DBUSDC.type).toContain('DBUSDC');
     });
   });
 });
