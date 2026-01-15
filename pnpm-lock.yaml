@@ -15,8 +15,8 @@ importers:
         specifier: ^0.27.0
         version: 0.27.0(typescript@5.9.3)
       '@mysten/sui':
-        specifier: ^1.45.0
-        version: 1.45.0(typescript@5.9.3)
+        specifier: ^1.45.2
+        version: 1.45.2(typescript@5.9.3)
       bignumber.js:
         specifier: ^9.3.1
         version: 9.3.1
@@ -763,10 +763,6 @@ packages:
 
   '@mysten/deepbook-v3@0.27.0':
     resolution: {integrity: sha512-+hsjiAU7xsyhqtPzL17v1AMIbADe4luCmXHd3BY5pzKjGBnIkSh+xFK4/sKxNt4gJ6rcO8Mx4UQlP0mudjpCaQ==}
-    engines: {node: '>=18'}
-
-  '@mysten/sui@1.45.0':
-    resolution: {integrity: sha512-WYpZmrGWE/FeQaRhYrAYpHcHallj4BFIfSmjq6BkODzEhP9HfMplQAtd8AmtctwO7cpHJ+BjPUOguEAcf1gU4g==}
     engines: {node: '>=18'}
 
   '@mysten/sui@1.45.2':
@@ -2510,9 +2506,6 @@ packages:
     resolution: {integrity: sha512-kiGUalWN+rgBJ/1OHZsBtU4rXZOfj/7rKQxULKlIzwzQSvMJUUNgPwJEEh7gU6xEVxC0ahoOBvN2YI8GH6FNgA==}
     engines: {node: '>=10.12.0'}
 
-  valibot@0.36.0:
-    resolution: {integrity: sha512-CjF1XN4sUce8sBK9TixrDqFM7RwNkuXdJu174/AwmQUB62QbCQADg5lLe8ldBalFgtj1uKj+pKwDJiNo4Mn+eQ==}
-
   valibot@1.2.0:
     resolution: {integrity: sha512-mm1rxUsmOxzrwnX5arGS+U4T25RdvpPjPN4yR0u9pUBov9+zGVtO84tif1eY4r6zWxVxu3KzIyknJy3rxfRZZg==}
     peerDependencies:
@@ -3250,28 +3243,6 @@ snapshots:
       - '@gql.tada/svelte-support'
       - '@gql.tada/vue-support'
       - debug
-      - typescript
-
-  '@mysten/sui@1.45.0(typescript@5.9.3)':
-    dependencies:
-      '@graphql-typed-document-node/core': 3.2.0(graphql@16.12.0)
-      '@mysten/bcs': 1.9.2
-      '@mysten/utils': 0.2.0
-      '@noble/curves': 1.9.4
-      '@noble/hashes': 1.8.0
-      '@protobuf-ts/grpcweb-transport': 2.11.1
-      '@protobuf-ts/runtime': 2.11.1
-      '@protobuf-ts/runtime-rpc': 2.11.1
-      '@scure/base': 1.2.6
-      '@scure/bip32': 1.7.0
-      '@scure/bip39': 1.6.0
-      gql.tada: 1.9.0(graphql@16.12.0)(typescript@5.9.3)
-      graphql: 16.12.0
-      poseidon-lite: 0.2.1
-      valibot: 0.36.0
-    transitivePeerDependencies:
-      - '@gql.tada/svelte-support'
-      - '@gql.tada/vue-support'
       - typescript
 
   '@mysten/sui@1.45.2(typescript@5.9.3)':
@@ -5186,8 +5157,6 @@ snapshots:
       '@jridgewell/trace-mapping': 0.3.31
       '@types/istanbul-lib-coverage': 2.0.6
       convert-source-map: 2.0.0
-
-  valibot@0.36.0: {}
 
   valibot@1.2.0(typescript@5.9.3):
     optionalDependencies:
