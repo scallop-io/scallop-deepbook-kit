@@ -9,10 +9,10 @@ describe('DeepBookMarginPool Tests', () => {
   });
 
   it('Should set the env correctly', () => {
-    const marginPoolTestnet = new DeepBookMarginPool('testnet');
+    const marginPoolTestnet = new DeepBookMarginPool({ env: 'testnet' });
     expect(marginPoolTestnet.env).toBe('testnet');
 
-    const marginPoolMainnet = new DeepBookMarginPool('mainnet');
+    const marginPoolMainnet = new DeepBookMarginPool({ env: 'mainnet' });
     expect(marginPoolMainnet.env).toBe('mainnet');
   });
 
