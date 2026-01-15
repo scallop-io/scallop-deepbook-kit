@@ -2,6 +2,8 @@
  * Type definitions for DeepBook Margin Toolkit | DeepBook Margin Toolkit 類型定義
  */
 
+import { DeepBookConfig } from '@mysten/deepbook-v3';
+
 // ============================================================================
 // Network & Configuration Types | 網路與配置類型
 // ============================================================================
@@ -31,6 +33,11 @@ export interface ToolkitConfig {
 
   /** Optional: custom fullnode URL | 可選：自訂 fullnode URL */
   fullnodeUrl?: string;
+
+  /** Optional: Supplier Cap Object type ID | 可選：Supplier Cap 物件類型 ID */
+  supplierCapPackageId?: string;
+
+  dbConfig?: DeepBookConfig;
 }
 
 /**
