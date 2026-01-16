@@ -1,4 +1,4 @@
-import { MARGIN_POOL_PARAM_KEYS } from '../src/testnet-config';
+import { MARGIN_POOL_PARAM_KEYS } from '../src/margin-pool-config';
 import { DeepBookMarginPool } from '../src/toolkit';
 
 describe('DeepBookMarginPool Tests', () => {
@@ -9,11 +9,14 @@ describe('DeepBookMarginPool Tests', () => {
   });
 
   it('Should set the env correctly', () => {
-    const marginPoolTestnet = new DeepBookMarginPool('testnet');
+    const marginPoolTestnet = new DeepBookMarginPool({ env: 'testnet' });
     expect(marginPoolTestnet.env).toBe('testnet');
 
-    const marginPoolMainnet = new DeepBookMarginPool('mainnet');
+    const marginPoolMainnet = new DeepBookMarginPool({ env: 'mainnet' });
     expect(marginPoolMainnet.env).toBe('mainnet');
+
+    const marginPoolDefault = new DeepBookMarginPool();
+    expect(marginPoolDefault.env).toBe('mainnet');
   });
 
   it('Should return pool parameters', async () => {
