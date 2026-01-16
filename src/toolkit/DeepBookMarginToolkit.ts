@@ -35,12 +35,6 @@ import { SuiClient, getFullnodeUrl } from '@mysten/sui/client';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import { Transaction } from '@mysten/sui/transactions';
 import { MarginPoolContract, DeepBookConfig } from '@mysten/deepbook-v3';
-import {
-  TESTNET_COINS,
-  TESTNET_POOLS,
-  TESTNET_MARGIN_POOLS,
-  TESTNET_PACKAGES,
-} from '../testnet-config';
 import { ToolkitConfig, MarginCoinType, MarginBalance } from './types';
 import { decodeSuiPrivateKey, SUI_PRIVATE_KEY_PREFIX } from '@mysten/sui/cryptography';
 import { hexOrBase64ToUint8Array, normalizePrivateKey } from '../utils/private-key';
@@ -54,70 +48,40 @@ export class DeepBookMarginToolkit {
   private address: string;
   private marginPoolContract: MarginPoolContract;
   private supplierCapId?: string;
+  private dbConfig: DeepBookConfig;
+  private supplierCapPackageId: string;
 
-  constructor(config: ToolkitConfig) {
+  constructor({
+    network,
+    fullnodeUrl,
+    supplierCapId,
+    privateKey,
+    supplierCapPackageId,
+    dbConfig,
+  }: ToolkitConfig) {
     // Initialize SuiClient | 初始化 SuiClient
-    const rpcUrl = config.fullnodeUrl ?? getFullnodeUrl(config.network);
+    const rpcUrl = fullnodeUrl ?? getFullnodeUrl(network);
     this.suiClient = new SuiClient({ url: rpcUrl });
 
     // Initialize keypair | 初始化密鑰對
-    this.keypair = this.#parseSecretKey(config.privateKey);
+    this.keypair = this.#parseSecretKey(privateKey);
     this.address = this.keypair.getPublicKey().toSuiAddress();
 
     // Store Supplier Cap ID if provided | 儲存 Supplier Cap ID（如果提供）
-    this.supplierCapId = config.supplierCapId;
-
-    // Prepare coins configuration | 準備 coins 配置
-    const coins = {
-      DEEP: {
-        address: TESTNET_COINS.DEEP.address,
-        type: TESTNET_COINS.DEEP.type,
-        scalar: TESTNET_COINS.DEEP.scalar,
-      },
-      SUI: {
-        address: TESTNET_COINS.SUI.address,
-        type: TESTNET_COINS.SUI.type,
-        scalar: TESTNET_COINS.SUI.scalar,
-      },
-      DBUSDC: {
-        address: TESTNET_COINS.DBUSDC.address,
-        type: TESTNET_COINS.DBUSDC.type,
-        scalar: TESTNET_COINS.DBUSDC.scalar,
-      },
-    };
-
-    // Prepare pools configuration | 準備 pools 配置
-    const pools = {
-      SUI_DBUSDC: {
-        address: TESTNET_POOLS.SUI_DBUSDC.address,
-        baseCoin: TESTNET_POOLS.SUI_DBUSDC.baseCoin,
-        quoteCoin: TESTNET_POOLS.SUI_DBUSDC.quoteCoin,
-      },
-    };
-
-    // Prepare margin pools configuration | 準備 margin pools 配置
-    const marginPools = {
-      SUI: {
-        address: TESTNET_MARGIN_POOLS.SUI.address,
-        type: TESTNET_MARGIN_POOLS.SUI.coinType,
-      },
-      DBUSDC: {
-        address: TESTNET_MARGIN_POOLS.DBUSDC.address,
-        type: TESTNET_MARGIN_POOLS.DBUSDC.coinType,
-      },
-    };
+    this.supplierCapId = supplierCapId;
 
     // Create DeepBookConfig | 創建 DeepBookConfig
-    const deepbookConfig = new DeepBookConfig({
-      address: this.address,
-      env: config.network,
-      coins,
-      pools,
-      marginPools,
-    });
+    this.dbConfig =
+      dbConfig ??
+      new DeepBookConfig({
+        env: network,
+        address: this.address,
+      });
 
     // Initialize MarginPoolContract | 初始化 MarginPoolContract
-    this.marginPoolContract = new MarginPoolContract(deepbookConfig);
+    this.marginPoolContract = new MarginPoolContract(this.dbConfig);
+
+    this.supplierCapPackageId = supplierCapPackageId ?? this.dbConfig.MARGIN_PACKAGE_ID;
   }
 
   #parseSecretKey(secretKey: string): Ed25519Keypair {
@@ -129,8 +93,9 @@ export class DeepBookMarginToolkit {
     return Ed25519Keypair.fromSecretKey(normalizePrivateKey(hexOrBase64ToUint8Array(secretKey)));
   }
 
+  // @TODO: Handle more than 1 supplier cap in future
   async #getExistingSupplierCapId() {
-    const type = `${TESTNET_PACKAGES.MARGIN_INITIAL_PACKAGE_ID}::margin_pool::SupplierCap`;
+    const type = `${this.dbConfig.MARGIN_PACKAGE_ID}::margin_pool::SupplierCap`;
     const resp = await this.suiClient.getOwnedObjects({
       owner: this.address,
       filter: {
@@ -184,8 +149,8 @@ export class DeepBookMarginToolkit {
       // Direct moveCall to get the returned object reference
       // Based on SDK source: margin_pool::mint_supplier_cap
       const supplierCap = tx.moveCall({
-        target: `${TESTNET_PACKAGES.MARGIN_PACKAGE_ID}::margin_pool::mint_supplier_cap`,
-        arguments: [tx.object(TESTNET_PACKAGES.MARGIN_REGISTRY_ID), tx.object.clock()],
+        target: `${this.supplierCapPackageId}::margin_pool::mint_supplier_cap`,
+        arguments: [tx.object(this.dbConfig.MARGIN_REGISTRY_ID), tx.object.clock()],
       });
 
       // Transfer the created Supplier Cap to the sender
@@ -198,7 +163,6 @@ export class DeepBookMarginToolkit {
           showEffects: true,
           showObjectChanges: true,
         },
-        requestType: 'WaitForLocalExecution',
       });
 
       if (result.errors && result.errors.length > 0) {
@@ -233,22 +197,21 @@ export class DeepBookMarginToolkit {
       tx.setSender(this.address);
 
       // Get margin pool configuration
-      const marginPool = TESTNET_MARGIN_POOLS[coin];
+      const marginPool = this.dbConfig.getMarginPool(coin);
+      if (!marginPool) {
+        throw new Error(`Margin pool configuration not found for coin: ${coin}`);
+      }
 
       // Use the initialVersion from config as the initial_shared_version
       // Margin pools are shared objects on Sui
       tx.moveCall({
-        target: `${TESTNET_PACKAGES.MARGIN_PACKAGE_ID}::margin_pool::mint_supply_referral`,
+        target: `${this.dbConfig.MARGIN_PACKAGE_ID}::margin_pool::mint_supply_referral`,
         arguments: [
-          tx.sharedObjectRef({
-            objectId: marginPool.address,
-            initialSharedVersion: marginPool.initialVersion,
-            mutable: true,
-          }),
-          tx.object(TESTNET_PACKAGES.MARGIN_REGISTRY_ID),
+          tx.object(marginPool.address),
+          tx.object(this.dbConfig.MARGIN_REGISTRY_ID),
           tx.object.clock(),
         ],
-        typeArguments: [marginPool.coinType],
+        typeArguments: [marginPool.type],
       });
 
       const result = await this.suiClient.signAndExecuteTransaction({
@@ -258,7 +221,6 @@ export class DeepBookMarginToolkit {
           showEffects: true,
           showObjectChanges: true,
         },
-        requestType: 'WaitForLocalExecution',
       });
 
       if (result.errors && result.errors.length > 0) {
@@ -314,7 +276,6 @@ export class DeepBookMarginToolkit {
           showEffects: true,
           showObjectChanges: true,
         },
-        requestType: 'WaitForLocalExecution',
       });
 
       if (errors && errors.length > 0) {
@@ -363,7 +324,6 @@ export class DeepBookMarginToolkit {
           showEffects: true,
           showObjectChanges: true,
         },
-        requestType: 'WaitForLocalExecution',
       });
 
       if (errors && errors.length > 0) {
@@ -399,7 +359,6 @@ export class DeepBookMarginToolkit {
           showObjectChanges: true,
           showBalanceChanges: true,
         },
-        requestType: 'WaitForLocalExecution',
       });
 
       if (errors && errors.length > 0) {
@@ -440,19 +399,19 @@ export class DeepBookMarginToolkit {
         if (supplyData && supplyData[0]) {
           const rawAmount = Buffer.from(supplyData[0]).readBigUInt64LE();
           // Convert from smallest unit to human-readable | 從最小單位轉換為人類可讀
-          const scalar = coin === 'SUI' ? TESTNET_COINS.SUI.scalar : TESTNET_COINS.DBUSDC.scalar;
+          const scalar = this.dbConfig.getCoin(coin).scalar;
           userSupplyAmount = Number(rawAmount) / scalar;
         }
       }
 
       // Query wallet balance | 查詢錢包餘額
-      const coinType = coin === 'SUI' ? TESTNET_COINS.SUI.type : TESTNET_COINS.DBUSDC.type;
+      const coinType = this.dbConfig.getCoin(coin).type;
       const balance = await this.suiClient.getBalance({
         owner: this.address,
         coinType,
       });
 
-      const scalar = coin === 'SUI' ? TESTNET_COINS.SUI.scalar : TESTNET_COINS.DBUSDC.scalar;
+      const scalar = this.dbConfig.getCoin(coin).scalar;
       const walletBalance = Number(balance.totalBalance) / scalar;
 
       return {

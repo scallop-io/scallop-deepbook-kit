@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.1.5](https://github.com/scallop-io/scallop-deepbook-kit/compare/v0.1.4...v0.1.5) (2026-01-16)
+
+### Added
+
+- Mainnet package support
+- Add support to pass custom `DeepbookConfig` instance instead of changing constant config values
+
+### Changed
+
+- Default env value to `mainnet`
+
+### Removed
+
+- Hardcoded testnet and mainnet configs
+- Config utils
+
 ### [0.1.4](https://github.com/scallop-io/scallop-deepbook-kit/compare/v0.1.3...v0.1.4) (2025-11-24)
 
 ### Fixed
