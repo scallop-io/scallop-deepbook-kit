@@ -165,9 +165,9 @@ export class DeepBookMarginPool {
   private parseInspectResultToBcsStructs(
     inspectResults: DevInspectResults,
     keys: (MarginPoolParamKey | MarginPoolWithSupplierCapParamKey)[]
-  ) {
+  ): Record<MarginPoolParamKey | MarginPoolWithSupplierCapParamKey, string> {
     const results = inspectResults.results;
-    if (!results) return {};
+    if (!results) throw new Error('No results found in DevInspect output.');
 
     return keys.reduce(
       (acc, key, idx) => {
@@ -181,7 +181,7 @@ export class DeepBookMarginPool {
 
         return acc;
       },
-      {} as Record<string, string>
+      {} as Record<MarginPoolParamKey | MarginPoolWithSupplierCapParamKey, string>
     );
   }
 
@@ -404,7 +404,7 @@ export class DeepBookMarginPool {
     });
 
     const parsed = this.parseInspectResultToBcsStructs(inspectResult, allKeys);
-    const formattedResult = this.formatResult(parsed as any, coinKey);
+    const formattedResult = this.formatResult(parsed, coinKey);
     const borrowAprScaled = BigInt(parsed.interestRate ?? 0);
     const interestData = await this.#getInterestConfig(coinKey, borrowAprScaled);
 
