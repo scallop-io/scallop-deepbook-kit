@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.1.7](https://github.com/scallop-io/scallop-deepbook-kit/compare/v0.1.6...v0.1.7) (2026-01-17)
+
+### Fixed
+
+- Avoid juggling between `Number` and `BigInt` conversion in `DeepBookMarginPool` class
+
+### Changed
+
+- Improve `DeepBookMarginPool` class test coverage
+
 ### [0.1.6](https://github.com/scallop-io/scallop-deepbook-kit/compare/v0.1.5...v0.1.6) (2026-01-17)
 
 ### Changed
