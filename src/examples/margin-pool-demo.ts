@@ -31,8 +31,9 @@ const main = async () => {
         marginPools: MARGIN_POOLS,
       }),
     });
-    const suiMarginPoolParams = await dbMarginPool.getPoolParameters('SUI');
-    console.log('SUI Margin Pool Parameters:', suiMarginPoolParams);
+    const coinKey = 'USDC';
+    const suiMarginPoolParams = await dbMarginPool.getPoolParameters(coinKey);
+    console.log(`${coinKey} Margin Pool Parameters:`, suiMarginPoolParams);
   } catch (error) {
     console.error('An error occurred:', error);
   } finally {
