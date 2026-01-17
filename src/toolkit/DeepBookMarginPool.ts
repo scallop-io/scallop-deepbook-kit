@@ -30,6 +30,9 @@ export type MarginPoolParams = Record<
     type: string;
     scalar: number;
     decimals: number;
+    feed: string;
+    currencyId: string;
+    priceInfoObjectId: string;
   };
 
 type RawInterestConfig = {
@@ -215,6 +218,9 @@ export class DeepBookMarginPool {
       maxBorrowApr: 0,
       supplyApr: 0,
       utilizationRate: 0,
+      feed: '',
+      currencyId: '',
+      priceInfoObjectId: '',
       ...coin,
     };
 
