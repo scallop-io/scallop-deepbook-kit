@@ -1,4 +1,4 @@
-import { DeepBookConfig, FLOAT_SCALAR, MarginPoolContract } from '@mysten/deepbook-v3';
+import { Coin, DeepBookConfig, FLOAT_SCALAR, MarginPoolContract } from '@mysten/deepbook-v3';
 import { bcs } from '@mysten/sui/bcs';
 import { DevInspectResults, getFullnodeUrl, SuiClient } from '@mysten/sui/client';
 import { Transaction } from '@mysten/sui/transactions';
@@ -25,15 +25,8 @@ export type MarginPoolParams = Record<
   MarginPoolParamKey | MarginPoolWithSupplierCapParamKey,
   number
 > &
-  InterestConfig & {
-    address: string;
-    type: string;
-    scalar: number;
-    decimals: number;
-    feed: string;
-    currencyId: string;
-    priceInfoObjectId: string;
-  };
+  InterestConfig &
+  Coin & { decimals: number };
 
 type RawInterestConfig = {
   base_rate: string;
@@ -169,7 +162,7 @@ export class DeepBookMarginPool {
    * Parse DevInspect results into BCS-decoded parameter objects.
    * Used to extract actual values returned from contract functions.
    */
-  #parseInspectResultToBcsStructs(
+  private parseInspectResultToBcsStructs(
     inspectResults: DevInspectResults,
     keys: (MarginPoolParamKey | MarginPoolWithSupplierCapParamKey)[]
   ) {
@@ -192,7 +185,7 @@ export class DeepBookMarginPool {
     );
   }
 
-  #formatResult(
+  private formatResult(
     result: Record<MarginPoolParamKey | MarginPoolWithSupplierCapParamKey, string>,
     coinKey: string
   ): MarginPoolParams {
@@ -211,16 +204,13 @@ export class DeepBookMarginPool {
       lastUpdateTimestamp: 0,
       userSupplyShares: 0,
       userSupplyAmount: 0,
-      decimals: this.dbConfig.getCoin(coinKey).scalar.toString().length - 1,
+      decimals: coin.scalar.toString().length - 1,
       highKink: 0,
       baseBorrowApr: 0,
       borrowAprOnHighKink: 0,
       maxBorrowApr: 0,
       supplyApr: 0,
       utilizationRate: 0,
-      feed: '',
-      currencyId: '',
-      priceInfoObjectId: '',
       ...coin,
     };
 
@@ -257,7 +247,7 @@ export class DeepBookMarginPool {
    *   r(U) = base_rate + mul(optimal, base_slope) + mul(U - optimal, excess_slope)
    * }
    */
-  #computeBorrowAprAtUtil(
+  private computeBorrowAprAtUtil(
     util: bigint, // 1e9-scaled utilization
     cfg: RawInterestConfig
   ): bigint {
@@ -273,18 +263,17 @@ export class DeepBookMarginPool {
     return baseRate + mul(optimalUtil, baseSlope) + mul(util - optimalUtil, excessSlope);
   }
 
-  #calculateKinksAndRate(
+  private calculateKinksAndRate(
     interestConfig: RawInterestConfig,
     marginPoolConfig: RawMarginPoolConfig,
     state: RawStatePoolConfig,
-    borrowApr: number
+    borrowAprScaled: bigint
   ) {
     const highKink = BigInt(interestConfig.optimal_utilization); // v0
     const maxKink = BigInt(marginPoolConfig.max_utilization_rate); // U_max
 
-    // const midBorrowApr = this.#computeBorrowAprAtUtil(midKink, interestConfig);
-    const borrowAprOnHighKink = this.#computeBorrowAprAtUtil(highKink, interestConfig);
-    const maxBorrowApr = this.#computeBorrowAprAtUtil(maxKink, interestConfig);
+    const borrowAprOnHighKink = this.computeBorrowAprAtUtil(highKink, interestConfig);
+    const maxBorrowApr = this.computeBorrowAprAtUtil(maxKink, interestConfig);
 
     const utilizationRate = BigInt(
       BigNumber(state.total_borrow)
@@ -293,27 +282,24 @@ export class DeepBookMarginPool {
         .decimalPlaces(0)
         .toString()
     );
+
     const supplyApr = mul(
-      mul(BigInt(borrowApr), utilizationRate),
+      mul(borrowAprScaled, utilizationRate),
       BigInt(FLOAT_SCALAR) - BigInt(marginPoolConfig.protocol_spread)
     );
 
     return {
-      // raw 1e9-scaled values
       raw: {
         baseBorrowApr: interestConfig.base_rate,
-        highKink, // utilization at kink2
-        borrowAprOnHighKink, // APR at highKink
-        maxBorrowApr, // APR at U = 1.0
+        highKink,
+        borrowAprOnHighKink,
+        maxBorrowApr,
         supplyApr,
         utilizationRate,
       },
-      // convenience normalized numbers
       normalized: {
         baseBorrowApr: normalize(BigInt(interestConfig.base_rate)),
-        // midKink: normalize(midKink),
         highKink: normalize(highKink),
-        // midBorrowApr: normalize(midBorrowApr),
         borrowAprOnHighKink: normalize(borrowAprOnHighKink),
         maxBorrowApr: normalize(maxBorrowApr),
         supplyApr: normalize(supplyApr),
@@ -325,9 +311,9 @@ export class DeepBookMarginPool {
   /**
    * Internal: Fetch and compute interest configuration parameters.
    * @param coinKey - Asset key.
-   * @returns Interest configuration data including kinks and APRs.
+   * @param borrowAprScaled - interestRate in FLOAT_SCALAR scale (bigint).
    */
-  async #getInterestConfig(coinKey: string, interestRate: number) {
+  async #getInterestConfig(coinKey: string, borrowAprScaled: bigint) {
     const { address } = this.dbConfig.getMarginPool(coinKey);
     const response = await this.suiClient.getObject({
       id: address,
@@ -341,12 +327,14 @@ export class DeepBookMarginPool {
     const interestConfig = config.interest_config.fields as RawInterestConfig;
     const marginPoolConfig = config.margin_pool_config.fields as RawMarginPoolConfig;
     const statePoolConfig = fields.state.fields as RawStatePoolConfig;
-    const { normalized } = this.#calculateKinksAndRate(
+
+    const { normalized } = this.calculateKinksAndRate(
       interestConfig,
       marginPoolConfig,
       statePoolConfig,
-      interestRate
+      borrowAprScaled
     );
+
     return normalized;
   }
 
@@ -415,14 +403,10 @@ export class DeepBookMarginPool {
       sender: this.dbConfig.address,
     });
 
-    const formattedResult = this.#formatResult(
-      this.#parseInspectResultToBcsStructs(inspectResult, allKeys),
-      coinKey
-    );
-    const interestData = await this.#getInterestConfig(
-      coinKey,
-      formattedResult.interestRate * FLOAT_SCALAR
-    );
+    const parsed = this.parseInspectResultToBcsStructs(inspectResult, allKeys);
+    const formattedResult = this.formatResult(parsed as any, coinKey);
+    const borrowAprScaled = BigInt(parsed.interestRate ?? 0);
+    const interestData = await this.#getInterestConfig(coinKey, borrowAprScaled);
 
     return {
       ...formattedResult,
