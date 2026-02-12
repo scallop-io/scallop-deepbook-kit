@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.2.0](https://github.com/scallop-io/scallop-deepbook-kit/compare/v0.1.7...v0.2.0) (2026-02-12)
+
+### Breaking Changes
+
+- Set `"type": "module"` in `package.json` (all `.js` files are now ESM by default; update your imports and tooling if you relied on CommonJS)
+
+### Changed
+
+- Rename `env` to `network` in `DeepBookMarginPool` class
+- Adjust tests
+- Update `@mysten/deepbook-v3` package version
+- Migrate from `jest` to `vitest`
+
 ### [0.1.7](https://github.com/scallop-io/scallop-deepbook-kit/compare/v0.1.6...v0.1.7) (2026-01-17)
 
 ### Fixed
