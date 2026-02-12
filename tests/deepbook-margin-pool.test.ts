@@ -6,6 +6,7 @@ import {
   MARGIN_POOL_W_SUPPLIER_CAP_PARAM_KEYS,
 } from '../src/margin-pool-config';
 import { DeepBookMarginPool } from '../src/toolkit';
+import { describe, beforeEach, expect, it, vi } from 'vitest';
 
 // Helper to generate a minimal devInspect response
 function makeDevInspectResult(keys: string[]) {
@@ -17,48 +18,51 @@ function makeDevInspectResult(keys: string[]) {
 }
 
 describe('DeepBookMarginPool (unit)', () => {
-  let suiClientMock: jest.Mocked<SuiClient>;
+  let suiClientMock: {
+    devInspectTransactionBlock: ReturnType<typeof vi.fn>;
+    getObject: ReturnType<typeof vi.fn>;
+  };
 
   beforeEach(() => {
     suiClientMock = {
-      devInspectTransactionBlock: jest.fn(),
-      getObject: jest.fn(),
-    } as any;
+      devInspectTransactionBlock: vi.fn(),
+      getObject: vi.fn(),
+    };
   });
 
   it('initializes correctly with default config', () => {
     const marginPool = new DeepBookMarginPool({ suiClient: suiClientMock as any });
     expect(marginPool).toBeDefined();
     expect(marginPool.marginPoolContract).toBeDefined();
-    expect(marginPool.env).toBe('mainnet');
+    expect(marginPool.network).toBe('mainnet');
   });
 
   it('sets env correctly', () => {
     const marginPoolTestnet = new DeepBookMarginPool({
-      env: 'testnet',
+      network: 'testnet',
       suiClient: suiClientMock as any,
     });
-    expect(marginPoolTestnet.env).toBe('testnet');
+    expect(marginPoolTestnet.network).toBe('testnet');
 
     const marginPoolMainnet = new DeepBookMarginPool({
-      env: 'mainnet',
+      network: 'mainnet',
       suiClient: suiClientMock as any,
     });
-    expect(marginPoolMainnet.env).toBe('mainnet');
+    expect(marginPoolMainnet.network).toBe('mainnet');
 
     const marginPoolDefault = new DeepBookMarginPool({ suiClient: suiClientMock as any });
-    expect(marginPoolDefault.env).toBe('mainnet');
+    expect(marginPoolDefault.network).toBe('mainnet');
   });
 
-  it('throws when env mismatches dbConfig.env', () => {
+  it('throws when network mismatches dbConfig.network', () => {
     const init = () =>
       new DeepBookMarginPool({
-        env: 'testnet',
+        network: 'testnet',
         suiClient: suiClientMock as any,
-        dbConfig: { env: 'mainnet', address: '' } as any,
+        dbConfig: { network: 'mainnet', address: '' } as any,
       });
 
-    expect(init).toThrow(/Mismatch between provided env/i);
+    expect(init).toThrow(/Mismatch between provided network/i);
   });
 
   it('returns Transaction when inspect=false', async () => {
@@ -124,9 +128,9 @@ describe('DeepBookMarginPool (unit)', () => {
       userSupplyAmount: '0',
     } as any;
 
-    jest.spyOn(marginPool as any, 'parseInspectResultToBcsStructs').mockReturnValue(parsed);
+    vi.spyOn(marginPool as any, 'parseInspectResultToBcsStructs').mockReturnValue(parsed);
 
-    jest.spyOn(marginPool as any, 'formatResult').mockReturnValue({
+    vi.spyOn(marginPool as any, 'formatResult').mockReturnValue({
       ...parsed,
       interestRate: 0.132349692,
       decimals: 9,
@@ -155,7 +159,7 @@ describe('DeepBookMarginPool (unit)', () => {
   it('adds supplier-cap calls when supplierCapId is provided', async () => {
     const marginPool = new DeepBookMarginPool({ suiClient: suiClientMock as any });
     const tx = new Transaction();
-    const addSpy = jest.spyOn(tx, 'add');
+    const addSpy = vi.spyOn(tx, 'add');
 
     await marginPool.getPoolParameters('SUI', normalizeSuiAddress(SUI_RANDOM_OBJECT_ID), tx, false);
 
@@ -171,11 +175,11 @@ describe('DeepBookMarginPool (unit)', () => {
       makeDevInspectResult([...MARGIN_POOL_PARAM_KEYS, ...MARGIN_POOL_W_SUPPLIER_CAP_PARAM_KEYS])
     );
 
-    jest
-      .spyOn(marginPool as any, 'parseInspectResultToBcsStructs')
-      .mockReturnValue({ interestRate: '132349692' } as any);
+    vi.spyOn(marginPool as any, 'parseInspectResultToBcsStructs').mockReturnValue({
+      interestRate: '132349692',
+    } as any);
 
-    jest.spyOn(marginPool as any, 'formatResult').mockReturnValue({
+    vi.spyOn(marginPool as any, 'formatResult').mockReturnValue({
       interestRate: 0.13234969199999999,
     } as any);
 

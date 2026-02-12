@@ -74,7 +74,7 @@ export class DeepBookMarginToolkit {
     this.dbConfig =
       dbConfig ??
       new DeepBookConfig({
-        env: network,
+        network,
         address: this.address,
       });
 

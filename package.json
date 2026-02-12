@@ -1,4 +1,5 @@
 {
+  "type": "module",
   "name": "@scallop-io/scallop-deepbook-kit",
   "version": "0.1.7",
   "description": "A toolkit for integrating Scallop with DeepBook functionality",
@@ -37,9 +38,9 @@
     "src"
   ],
   "scripts": {
-    "build": "npm run build:tsup",
+    "build": "npm run build:prod",
     "build:prod": "tsup --env.NODE_ENV production",
-    "build:tsup": "tsup",
+    "build:dev": "tsup",
     "build:watch": "tsc --watch",
     "example:toolkit": "tsx src/examples/toolkit-demo.ts",
     "clean": "rm -rf dist",
@@ -48,31 +49,31 @@
     "lint:fix": "eslint src --ext .ts --fix",
     "format": "prettier --write \"src/**/*.ts\"",
     "format:check": "prettier --check \"src/**/*.ts\"",
-    "test": "jest",
-    "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage",
+    "test": "vitest",
+    "test:watch": "vitest --watch",
+    "test:coverage": "vitest --coverage",
     "prepare": "husky install",
     "prepublishOnly": "pnpm run clean && pnpm run build:prod"
   },
   "devDependencies": {
-    "@types/jest": "^30.0.0",
     "@types/node": "^24.10.0",
     "@typescript-eslint/eslint-plugin": "^8.46.4",
     "@typescript-eslint/parser": "^8.46.4",
+    "@vitest/coverage-v8": "^4.0.18",
+    "@vitest/ui": "^4.0.18",
     "eslint": "^9.39.1",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.5.4",
     "husky": "^8.0.3",
-    "jest": "^30.2.0",
     "prettier": "^3.6.2",
-    "ts-jest": "^29.4.5",
     "tsup": "^8.5.1",
     "tsx": "^4.19.2",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18"
   },
   "dependencies": {
     "@mysten/bcs": "^1.9.2",
-    "@mysten/deepbook-v3": "^0.27.0",
+    "@mysten/deepbook-v3": "^1.0.9",
     "@mysten/sui": "^1.45.2",
     "bignumber.js": "^9.3.1",
     "dotenv": "^17.2.3"

@@ -1,4 +1,5 @@
 import { DeepBookMarginToolkit } from '../src/toolkit';
+import { describe, expect, it } from 'vitest';
 import { config } from 'dotenv';
 config();
 

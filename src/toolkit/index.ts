@@ -16,7 +16,7 @@
  */
 
 export { DeepBookMarginToolkit } from './DeepBookMarginToolkit';
-export { DeepBookMarginPool, MarginPoolParams } from './DeepBookMarginPool';
+export { DeepBookMarginPool, type MarginPoolParams } from './DeepBookMarginPool';
 
 export type {
   NetworkType,

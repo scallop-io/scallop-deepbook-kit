@@ -62,7 +62,7 @@ const isWithSupplierCapKey = (
 type DeepBookMarginPoolParams = {
   address?: string;
   suiClient?: SuiClient;
-  env?: NetworkType;
+  network?: NetworkType;
   dbConfig?: DeepBookConfig;
 };
 
@@ -84,13 +84,13 @@ export class DeepBookMarginPool {
    * @param suiClient - Optional SuiClient; defaults to fullnode client based on config env.
    */
   constructor({
-    env = 'mainnet',
+    network = 'mainnet',
     address = '',
     suiClient = new SuiClient({
-      url: getFullnodeUrl(env),
+      url: getFullnodeUrl(network),
     }),
     dbConfig = new DeepBookConfig({
-      env,
+      network,
       address,
     }),
   }: DeepBookMarginPoolParams = {}) {
@@ -100,13 +100,15 @@ export class DeepBookMarginPool {
     // Initialize smart contract wrapper
     this.marginPoolContract = new MarginPoolContract(this.dbConfig);
 
-    if (env !== this.env) {
-      throw new Error(`Mismatch between provided env (${env}) and dbConfig env (${this.env}).`);
+    if (network !== this.network) {
+      throw new Error(
+        `Mismatch between provided network (${network}) and dbConfig network (${this.network}).`
+      );
     }
   }
 
-  get env() {
-    return this.dbConfig.env;
+  get network() {
+    return this.dbConfig.network;
   }
 
   // ---------------------------
