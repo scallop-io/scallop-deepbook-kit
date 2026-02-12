@@ -81,28 +81,22 @@ export class DeepBookMarginPool {
 
   /**
    * @param dbConfig - DeepBook configuration instance.
-   * @param suiClient - Optional SuiClient; defaults to fullnode client based on config env.
+   * @param suiClient - Optional SuiClient; defaults to fullnode client based on config network.
    */
-  constructor({
-    network = 'mainnet',
-    address = '',
-    suiClient = new SuiClient({
-      url: getFullnodeUrl(network),
-    }),
-    dbConfig = new DeepBookConfig({
-      network,
-      address,
-    }),
-  }: DeepBookMarginPoolParams = {}) {
-    this.dbConfig = dbConfig;
-    this.suiClient = suiClient;
+  constructor({ network, address = '', suiClient, dbConfig }: DeepBookMarginPoolParams = {}) {
+    // If dbConfig is provided and network is not, derive network from dbConfig
+    const resolvedNetwork = network ?? dbConfig?.network ?? 'mainnet';
+
+    this.dbConfig = dbConfig ?? new DeepBookConfig({ network: resolvedNetwork, address });
+    this.suiClient = suiClient ?? new SuiClient({ url: getFullnodeUrl(resolvedNetwork) });
 
     // Initialize smart contract wrapper
     this.marginPoolContract = new MarginPoolContract(this.dbConfig);
 
-    if (network !== this.network) {
+    // Only enforce mismatch if both network and dbConfig.network are explicitly provided
+    if (network !== undefined && dbConfig !== undefined && network !== dbConfig.network) {
       throw new Error(
-        `Mismatch between provided network (${network}) and dbConfig network (${this.network}).`
+        `Mismatch between provided network (${network}) and dbConfig network (${dbConfig.network}).`
       );
     }
   }

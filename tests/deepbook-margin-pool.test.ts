@@ -54,15 +54,22 @@ describe('DeepBookMarginPool (unit)', () => {
     expect(marginPoolDefault.network).toBe('mainnet');
   });
 
-  it('throws when network mismatches dbConfig.network', () => {
+  it('throws when network mismatches dbConfig.network (both explicitly provided)', () => {
     const init = () =>
       new DeepBookMarginPool({
         network: 'testnet',
         suiClient: suiClientMock as any,
         dbConfig: { network: 'mainnet', address: '' } as any,
       });
-
     expect(init).toThrow(/Mismatch between provided network/i);
+  });
+
+  it('defaults network from dbConfig if network is not provided', () => {
+    const marginPool = new DeepBookMarginPool({
+      suiClient: suiClientMock as any,
+      dbConfig: { network: 'testnet', address: '' } as any,
+    });
+    expect(marginPool.network).toBe('testnet');
   });
 
   it('returns Transaction when inspect=false', async () => {
