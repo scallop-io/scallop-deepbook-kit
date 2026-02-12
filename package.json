@@ -38,7 +38,7 @@
     "src"
   ],
   "scripts": {
-    "build": "npm run build:prod",
+    "build": "pnpm run build:prod",
     "build:prod": "tsup --env.NODE_ENV production",
     "build:dev": "tsup",
     "build:watch": "tsc --watch",
