@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.2.1](https://github.com/scallop-io/scallop-deepbook-kit/compare/v0.2.0...v0.2.1) (2026-02-12)
+
+### Changed
+
+- ESM entrypoint now points to `dist/index.js` instead of `dist/index.mjs` in `package.json` exports (fixes ESM import resolution)
+
 ### [0.2.0](https://github.com/scallop-io/scallop-deepbook-kit/compare/v0.1.7...v0.2.0) (2026-02-12)
 
 ### Breaking Changes
