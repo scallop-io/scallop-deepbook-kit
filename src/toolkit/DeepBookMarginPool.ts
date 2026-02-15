@@ -398,7 +398,10 @@ export class DeepBookMarginPool {
       ...MARGIN_POOL_W_SUPPLIER_CAP_PARAM_KEYS,
     ];
 
-    tx.setSender(this.dbConfig.address);
+    // Use a fallback address for simulation if not provided (simulation doesn't require a real sender)
+    const sender =
+      this.dbConfig.address || '0x0000000000000000000000000000000000000000000000000000000000000000';
+    tx.setSender(sender);
     const txBytes = await tx.build({ client: this.suiClient });
     const inspectResult = await this.suiClient.core.simulateTransaction({
       transaction: txBytes,
