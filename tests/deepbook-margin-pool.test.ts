@@ -5,7 +5,7 @@ import {
   MARGIN_POOL_W_SUPPLIER_CAP_PARAM_KEYS,
 } from '../src/margin-pool-config';
 import { DeepBookMarginPool } from '../src/toolkit';
-import { describe, beforeEach, expect, it, vi } from 'vitest';
+import { afterEach, describe, beforeEach, expect, it, vi } from 'vitest';
 
 // Helper to generate a minimal simulateTransaction response
 function makeSimulateTransactionResult(keys: string[]) {
@@ -32,6 +32,10 @@ describe('DeepBookMarginPool (unit)', () => {
         getObject: vi.fn(),
       },
     };
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it('initializes correctly with default config', () => {

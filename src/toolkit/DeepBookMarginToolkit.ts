@@ -173,7 +173,8 @@ export class DeepBookMarginToolkit {
       // Find created Supplier Cap from changedObjects | 從 changedObjects 中找到創建的 Supplier Cap
       if (txResult.effects.changedObjects) {
         for (const change of txResult.effects.changedObjects) {
-          if (!change.inputDigest && change.objectId) {
+          const objectType = txResult.objectTypes?.[change.objectId];
+          if (!change.inputDigest && objectType?.includes('SupplierCap')) {
             return change.objectId;
           }
         }
@@ -234,7 +235,8 @@ export class DeepBookMarginToolkit {
       // Find created Referral from changedObjects | 從 changedObjects 中找到創建的 Referral
       if (txResult.effects.changedObjects) {
         for (const change of txResult.effects.changedObjects) {
-          if (!change.inputDigest && change.objectId) {
+          const objectType = txResult.objectTypes?.[change.objectId];
+          if (!change.inputDigest && objectType?.includes('SupplyReferral')) {
             return change.objectId;
           }
         }
@@ -308,6 +310,7 @@ export class DeepBookMarginToolkit {
       }
 
       const tx = new Transaction();
+      tx.setSender(this.address);
 
       const supplierCap = tx.object(this.supplierCapId);
 
@@ -355,6 +358,7 @@ export class DeepBookMarginToolkit {
   async withdrawReferralFees(coin: MarginCoinType, referralId: string): Promise<boolean> {
     try {
       const tx = new Transaction();
+      tx.setSender(this.address);
 
       // Add withdrawReferralFees call | 添加 withdrawReferralFees 調用
       tx.add(this.marginPoolContract.withdrawReferralFees(coin, referralId) as any);
@@ -408,13 +412,11 @@ export class DeepBookMarginToolkit {
 
       let userSupplyAmount = 0;
 
-      const txResult =
-        result.$kind === 'Transaction' ? result.Transaction : result.FailedTransaction;
-      const commandResults = (txResult as any)?.commandResults;
+      const commandResults = result.commandResults;
       if (commandResults && commandResults[0]) {
-        const commandResult = commandResults[0];
-        if (commandResult.bcs) {
-          const rawAmount = Buffer.from(commandResult.bcs).readBigUInt64LE();
+        const returnValue = commandResults[0].returnValues?.[0];
+        if (returnValue?.bcs) {
+          const rawAmount = Buffer.from(returnValue.bcs).readBigUInt64LE();
           // Convert from smallest unit to human-readable | 從最小單位轉換為人類可讀
           const scalar = this.dbConfig.getCoin(coin).scalar;
           userSupplyAmount = Number(rawAmount) / scalar;

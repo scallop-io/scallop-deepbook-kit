@@ -87,7 +87,7 @@ export class DeepBookMarginPool {
    */
   constructor({ network, address = '', suiClient, dbConfig }: DeepBookMarginPoolParams = {}) {
     // If dbConfig is provided and network is not, derive network from dbConfig
-    const resolvedNetwork = network ?? dbConfig?.network ?? 'mainnet';
+    const resolvedNetwork = (network ?? dbConfig?.network ?? 'mainnet') as NetworkType;
 
     this.dbConfig = dbConfig ?? new DeepBookConfig({ network: resolvedNetwork, address });
     this.suiClient =
@@ -167,7 +167,7 @@ export class DeepBookMarginPool {
     keys: (MarginPoolParamKey | MarginPoolWithSupplierCapParamKey)[]
   ): Record<MarginPoolParamKey | MarginPoolWithSupplierCapParamKey, string> {
     const results = inspectResults.commandResults;
-    if (!results) throw new Error('No results found in DevInspect output.');
+    if (!results) throw new Error('No results found in simulateTransaction output.');
 
     return keys.reduce(
       (acc, key, idx) => {
@@ -379,8 +379,6 @@ export class DeepBookMarginPool {
     tx: Transaction = new Transaction(),
     inspect: boolean = true
   ): Promise<MarginPoolParams | Transaction> {
-    tx.setSender(this.dbConfig.address);
-
     // Add base parameters
     MARGIN_POOL_PARAM_KEYS.forEach((paramKey) => this.#addParamCall(tx, paramKey, coinKey));
 
@@ -400,6 +398,7 @@ export class DeepBookMarginPool {
       ...MARGIN_POOL_W_SUPPLIER_CAP_PARAM_KEYS,
     ];
 
+    tx.setSender(this.dbConfig.address);
     const txBytes = await tx.build({ client: this.suiClient });
     const inspectResult = await this.suiClient.core.simulateTransaction({
       transaction: txBytes,
