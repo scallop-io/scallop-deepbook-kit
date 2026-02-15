@@ -1,4 +1,3 @@
-import { SuiClient } from '@mysten/sui/client';
 import { Transaction } from '@mysten/sui/transactions';
 import { normalizeSuiAddress, SUI_RANDOM_OBJECT_ID } from '@mysten/sui/utils';
 import {
@@ -8,25 +7,30 @@ import {
 import { DeepBookMarginPool } from '../src/toolkit';
 import { describe, beforeEach, expect, it, vi } from 'vitest';
 
-// Helper to generate a minimal devInspect response
-function makeDevInspectResult(keys: string[]) {
+// Helper to generate a minimal simulateTransaction response
+function makeSimulateTransactionResult(keys: string[]) {
   return {
-    results: keys.map(() => ({
-      returnValues: [[new Uint8Array([1, 2, 3]), 'u8']],
+    $kind: 'Transaction' as const,
+    commandResults: keys.map(() => ({
+      returnValues: [{ bcs: new Uint8Array([1, 2, 3]) }],
     })),
   } as any;
 }
 
 describe('DeepBookMarginPool (unit)', () => {
   let suiClientMock: {
-    devInspectTransactionBlock: ReturnType<typeof vi.fn>;
-    getObject: ReturnType<typeof vi.fn>;
+    core: {
+      simulateTransaction: ReturnType<typeof vi.fn>;
+      getObject: ReturnType<typeof vi.fn>;
+    };
   };
 
   beforeEach(() => {
     suiClientMock = {
-      devInspectTransactionBlock: vi.fn(),
-      getObject: vi.fn(),
+      core: {
+        simulateTransaction: vi.fn(),
+        getObject: vi.fn(),
+      },
     };
   });
 
@@ -81,13 +85,18 @@ describe('DeepBookMarginPool (unit)', () => {
   it('returns pool parameters when inspect=true', async () => {
     const marginPool = new DeepBookMarginPool({ suiClient: suiClientMock as any });
 
-    suiClientMock.devInspectTransactionBlock.mockResolvedValue(
-      makeDevInspectResult([...MARGIN_POOL_PARAM_KEYS, ...MARGIN_POOL_W_SUPPLIER_CAP_PARAM_KEYS])
+    vi.spyOn(Transaction.prototype, 'build').mockResolvedValue(new Uint8Array([1, 2, 3]));
+
+    suiClientMock.core.simulateTransaction.mockResolvedValue(
+      makeSimulateTransactionResult([
+        ...MARGIN_POOL_PARAM_KEYS,
+        ...MARGIN_POOL_W_SUPPLIER_CAP_PARAM_KEYS,
+      ])
     );
 
-    suiClientMock.getObject.mockResolvedValue({
-      data: {
-        content: {
+    suiClientMock.core.getObject.mockResolvedValue({
+      object: {
+        json: {
           fields: {
             config: {
               fields: {
@@ -178,8 +187,13 @@ describe('DeepBookMarginPool (unit)', () => {
   it('does not convert float interestRate into BigInt', async () => {
     const marginPool = new DeepBookMarginPool({ suiClient: suiClientMock as any });
 
-    suiClientMock.devInspectTransactionBlock.mockResolvedValue(
-      makeDevInspectResult([...MARGIN_POOL_PARAM_KEYS, ...MARGIN_POOL_W_SUPPLIER_CAP_PARAM_KEYS])
+    vi.spyOn(Transaction.prototype, 'build').mockResolvedValue(new Uint8Array([1, 2, 3]));
+
+    suiClientMock.core.simulateTransaction.mockResolvedValue(
+      makeSimulateTransactionResult([
+        ...MARGIN_POOL_PARAM_KEYS,
+        ...MARGIN_POOL_W_SUPPLIER_CAP_PARAM_KEYS,
+      ])
     );
 
     vi.spyOn(marginPool as any, 'parseInspectResultToBcsStructs').mockReturnValue({
@@ -190,9 +204,9 @@ describe('DeepBookMarginPool (unit)', () => {
       interestRate: 0.13234969199999999,
     } as any);
 
-    suiClientMock.getObject.mockResolvedValue({
-      data: {
-        content: {
+    suiClientMock.core.getObject.mockResolvedValue({
+      object: {
+        json: {
           fields: {
             config: {
               fields: {

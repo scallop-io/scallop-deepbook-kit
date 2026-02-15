@@ -1,5 +1,5 @@
 import { DeepBookConfig } from '@mysten/deepbook-v3';
-import { DeepBookMarginPool } from '../toolkit';
+import { DeepBookMarginPool } from '../toolkit/index.js';
 
 const MARGIN_POOLS = {
   SUI: {
@@ -22,11 +22,11 @@ const MARGIN_POOLS = {
 
 const main = async () => {
   try {
-    const env = 'mainnet';
+    const network = 'mainnet';
     const dbMarginPool = new DeepBookMarginPool({
-      env,
+      network,
       dbConfig: new DeepBookConfig({
-        env,
+        network,
         address: '',
         marginPools: MARGIN_POOLS,
       }),

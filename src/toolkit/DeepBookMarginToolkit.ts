@@ -31,19 +31,20 @@
  * ```
  */
 
-import { SuiClient, getFullnodeUrl } from '@mysten/sui/client';
+import { SuiGrpcClient } from '@mysten/sui/grpc';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import { Transaction } from '@mysten/sui/transactions';
 import { MarginPoolContract, DeepBookConfig } from '@mysten/deepbook-v3';
-import { ToolkitConfig, MarginCoinType, MarginBalance } from './types';
+import { ToolkitConfig, MarginCoinType, MarginBalance } from './types.js';
 import { decodeSuiPrivateKey, SUI_PRIVATE_KEY_PREFIX } from '@mysten/sui/cryptography';
-import { hexOrBase64ToUint8Array, normalizePrivateKey } from '../utils/private-key';
+import { hexOrBase64ToUint8Array, normalizePrivateKey } from '../utils/private-key.js';
+import { getGrpcFullnodeUrl } from '../utils/network.js';
 
 /**
  * Main DeepBook Margin Toolkit class | DeepBook Margin Toolkit 主類別
  */
 export class DeepBookMarginToolkit {
-  private suiClient: SuiClient;
+  private suiClient: SuiGrpcClient;
   private keypair: Ed25519Keypair;
   private address: string;
   private marginPoolContract: MarginPoolContract;
@@ -59,9 +60,9 @@ export class DeepBookMarginToolkit {
     supplierCapPackageId,
     dbConfig,
   }: ToolkitConfig) {
-    // Initialize SuiClient | 初始化 SuiClient
-    const rpcUrl = fullnodeUrl ?? getFullnodeUrl(network);
-    this.suiClient = new SuiClient({ url: rpcUrl });
+    // Initialize SuiGrpcClient | 初始化 SuiGrpcClient
+    const baseUrl = fullnodeUrl ?? getGrpcFullnodeUrl(network);
+    this.suiClient = new SuiGrpcClient({ baseUrl, network });
 
     // Initialize keypair | 初始化密鑰對
     this.keypair = this.#parseSecretKey(privateKey);
@@ -96,17 +97,12 @@ export class DeepBookMarginToolkit {
   // @TODO: Handle more than 1 supplier cap in future
   async #getExistingSupplierCapId() {
     const type = `${this.dbConfig.MARGIN_PACKAGE_ID}::margin_pool::SupplierCap`;
-    const resp = await this.suiClient.getOwnedObjects({
+    const resp = await this.suiClient.core.listOwnedObjects({
       owner: this.address,
-      filter: {
-        StructType: type,
-      },
-      options: {
-        showType: true,
-      },
+      type,
     });
 
-    return resp.data?.[0]?.data?.objectId;
+    return resp.objects?.[0]?.objectId;
   }
 
   /**
@@ -156,25 +152,28 @@ export class DeepBookMarginToolkit {
       // Transfer the created Supplier Cap to the sender
       tx.transferObjects([supplierCap], tx.pure.address(this.address));
 
-      const result = await this.suiClient.signAndExecuteTransaction({
-        signer: this.keypair,
-        transaction: tx,
-        options: {
-          showEffects: true,
-          showObjectChanges: true,
+      const txBytes = await tx.build({ client: this.suiClient });
+      const { signature } = await this.keypair.signTransaction(txBytes);
+
+      const result = await this.suiClient.core.executeTransaction({
+        transaction: txBytes,
+        signatures: [signature],
+        include: {
+          effects: true,
+          objectTypes: true,
         },
       });
 
-      if (result.errors && result.errors.length > 0) {
-        throw new Error(
-          `Transaction failed with errors: ${result.errors.map((e) => e.toString()).join(', ')}`
-        );
+      const txResult =
+        result.$kind === 'Transaction' ? result.Transaction : result.FailedTransaction;
+      if (!txResult?.effects.status.success) {
+        throw new Error(`Transaction failed: ${txResult?.effects.status.error || 'Unknown error'}`);
       }
 
-      // Find created Supplier Cap from objectChanges | 從 objectChanges 中找到創建的 Supplier Cap
-      if (result.objectChanges) {
-        for (const change of result.objectChanges) {
-          if (change.type === 'created' && change.objectType.includes('SupplierCap')) {
+      // Find created Supplier Cap from changedObjects | 從 changedObjects 中找到創建的 Supplier Cap
+      if (txResult.effects.changedObjects) {
+        for (const change of txResult.effects.changedObjects) {
+          if (!change.inputDigest && change.objectId) {
             return change.objectId;
           }
         }
@@ -214,25 +213,28 @@ export class DeepBookMarginToolkit {
         typeArguments: [marginPool.type],
       });
 
-      const result = await this.suiClient.signAndExecuteTransaction({
-        signer: this.keypair,
-        transaction: tx,
-        options: {
-          showEffects: true,
-          showObjectChanges: true,
+      const txBytes = await tx.build({ client: this.suiClient });
+      const { signature } = await this.keypair.signTransaction(txBytes);
+
+      const result = await this.suiClient.core.executeTransaction({
+        transaction: txBytes,
+        signatures: [signature],
+        include: {
+          effects: true,
+          objectTypes: true,
         },
       });
 
-      if (result.errors && result.errors.length > 0) {
-        throw new Error(
-          `Transaction failed with errors: ${result.errors.map((e) => e.toString()).join(', ')}`
-        );
+      const txResult =
+        result.$kind === 'Transaction' ? result.Transaction : result.FailedTransaction;
+      if (!txResult?.effects.status.success) {
+        throw new Error(`Transaction failed: ${txResult?.effects.status.error || 'Unknown error'}`);
       }
 
-      // Find created Referral from objectChanges | 從 objectChanges 中找到創建的 Referral
-      if (result.objectChanges) {
-        for (const change of result.objectChanges) {
-          if (change.type === 'created' && change.objectType.includes('SupplyReferral')) {
+      // Find created Referral from changedObjects | 從 changedObjects 中找到創建的 Referral
+      if (txResult.effects.changedObjects) {
+        for (const change of txResult.effects.changedObjects) {
+          if (!change.inputDigest && change.objectId) {
             return change.objectId;
           }
         }
@@ -267,21 +269,25 @@ export class DeepBookMarginToolkit {
       const supplierCap = tx.object(this.supplierCapId);
 
       // SDK automatically handles unit conversion | SDK 自動處理單位轉換
-      tx.add(this.marginPoolContract.supplyToMarginPool(coin, supplierCap, amount, referralId));
+      tx.add(
+        this.marginPoolContract.supplyToMarginPool(coin, supplierCap, amount, referralId) as any
+      );
 
-      const { errors } = await this.suiClient.signAndExecuteTransaction({
-        signer: this.keypair,
-        transaction: tx,
-        options: {
-          showEffects: true,
-          showObjectChanges: true,
+      const txBytes = await tx.build({ client: this.suiClient });
+      const { signature } = await this.keypair.signTransaction(txBytes);
+
+      const result = await this.suiClient.core.executeTransaction({
+        transaction: txBytes,
+        signatures: [signature],
+        include: {
+          effects: true,
         },
       });
 
-      if (errors && errors.length > 0) {
-        throw new Error(
-          `Transaction failed with errors: ${errors.map((e) => e.toString()).join(', ')}`
-        );
+      const txResult =
+        result.$kind === 'Transaction' ? result.Transaction : result.FailedTransaction;
+      if (!txResult?.effects.status.success) {
+        throw new Error(`Transaction failed: ${txResult?.effects.status.error || 'Unknown error'}`);
       }
       return true;
     } catch (error: any) {
@@ -312,24 +318,26 @@ export class DeepBookMarginToolkit {
         amount
       );
 
-      const withdrawnCoin = withdrawFunc(tx);
+      const withdrawnCoin = withdrawFunc(tx as any);
 
       // Transfer withdrawn coin to sender | 將提取的 coin 轉給發送者
       tx.transferObjects([withdrawnCoin], this.address);
 
-      const { errors } = await this.suiClient.signAndExecuteTransaction({
-        signer: this.keypair,
-        transaction: tx,
-        options: {
-          showEffects: true,
-          showObjectChanges: true,
+      const txBytes = await tx.build({ client: this.suiClient });
+      const { signature } = await this.keypair.signTransaction(txBytes);
+
+      const result = await this.suiClient.core.executeTransaction({
+        transaction: txBytes,
+        signatures: [signature],
+        include: {
+          effects: true,
         },
       });
 
-      if (errors && errors.length > 0) {
-        throw new Error(
-          `Transaction failed with errors: ${errors.map((e) => e.toString()).join(', ')}`
-        );
+      const txResult =
+        result.$kind === 'Transaction' ? result.Transaction : result.FailedTransaction;
+      if (!txResult?.effects.status.success) {
+        throw new Error(`Transaction failed: ${txResult?.effects.status.error || 'Unknown error'}`);
       }
 
       return true;
@@ -349,22 +357,24 @@ export class DeepBookMarginToolkit {
       const tx = new Transaction();
 
       // Add withdrawReferralFees call | 添加 withdrawReferralFees 調用
-      tx.add(this.marginPoolContract.withdrawReferralFees(coin, referralId));
+      tx.add(this.marginPoolContract.withdrawReferralFees(coin, referralId) as any);
 
-      const { errors } = await this.suiClient.signAndExecuteTransaction({
-        signer: this.keypair,
-        transaction: tx,
-        options: {
-          showEffects: true,
-          showObjectChanges: true,
-          showBalanceChanges: true,
+      const txBytes = await tx.build({ client: this.suiClient });
+      const { signature } = await this.keypair.signTransaction(txBytes);
+
+      const result = await this.suiClient.core.executeTransaction({
+        transaction: txBytes,
+        signatures: [signature],
+        include: {
+          effects: true,
+          balanceChanges: true,
         },
       });
 
-      if (errors && errors.length > 0) {
-        throw new Error(
-          `Transaction failed with errors: ${errors.map((e) => e.toString()).join(', ')}`
-        );
+      const txResult =
+        result.$kind === 'Transaction' ? result.Transaction : result.FailedTransaction;
+      if (!txResult?.effects.status.success) {
+        throw new Error(`Transaction failed: ${txResult?.effects.status.error || 'Unknown error'}`);
       }
       return true;
     } catch (error: any) {
@@ -385,19 +395,26 @@ export class DeepBookMarginToolkit {
 
       // Query user supply amount in margin pool | 查詢用戶在 margin pool 中的供應量
       const tx = new Transaction();
-      tx.add(this.marginPoolContract.userSupplyAmount(coin, this.supplierCapId));
+      tx.setSender(this.address);
+      tx.add(this.marginPoolContract.userSupplyAmount(coin, this.supplierCapId) as any);
 
-      const result = await this.suiClient.devInspectTransactionBlock({
-        sender: this.address,
-        transactionBlock: tx,
+      const txBytes = await tx.build({ client: this.suiClient });
+      const result = await this.suiClient.core.simulateTransaction({
+        transaction: txBytes,
+        include: {
+          commandResults: true,
+        },
       });
 
       let userSupplyAmount = 0;
 
-      if (result && result.results && result.results[0] && result.results[0].returnValues) {
-        const supplyData = result.results[0].returnValues[0];
-        if (supplyData && supplyData[0]) {
-          const rawAmount = Buffer.from(supplyData[0]).readBigUInt64LE();
+      const txResult =
+        result.$kind === 'Transaction' ? result.Transaction : result.FailedTransaction;
+      const commandResults = (txResult as any)?.commandResults;
+      if (commandResults && commandResults[0]) {
+        const commandResult = commandResults[0];
+        if (commandResult.bcs) {
+          const rawAmount = Buffer.from(commandResult.bcs).readBigUInt64LE();
           // Convert from smallest unit to human-readable | 從最小單位轉換為人類可讀
           const scalar = this.dbConfig.getCoin(coin).scalar;
           userSupplyAmount = Number(rawAmount) / scalar;
@@ -406,13 +423,13 @@ export class DeepBookMarginToolkit {
 
       // Query wallet balance | 查詢錢包餘額
       const coinType = this.dbConfig.getCoin(coin).type;
-      const balance = await this.suiClient.getBalance({
+      const balance = await this.suiClient.core.getBalance({
         owner: this.address,
         coinType,
       });
 
       const scalar = this.dbConfig.getCoin(coin).scalar;
-      const walletBalance = Number(balance.totalBalance) / scalar;
+      const walletBalance = Number(balance.balance) / scalar;
 
       return {
         userSupplyAmount,

@@ -5,9 +5,9 @@
     "lib": ["esnext"],
 
     /* Modules */
-    "module": "esnext",
+    "module": "NodeNext",
     "rootDir": "./src",
-    "moduleResolution": "node",
+    "moduleResolution": "NodeNext",
     "resolveJsonModule": true,
 
     /* Emit */
