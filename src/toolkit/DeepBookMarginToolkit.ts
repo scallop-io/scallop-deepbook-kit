@@ -271,9 +271,7 @@ export class DeepBookMarginToolkit {
       const supplierCap = tx.object(this.supplierCapId);
 
       // SDK automatically handles unit conversion | SDK 自動處理單位轉換
-      tx.add(
-        this.marginPoolContract.supplyToMarginPool(coin, supplierCap, amount, referralId) as any
-      );
+      tx.add(this.marginPoolContract.supplyToMarginPool(coin, supplierCap, amount, referralId));
 
       const txBytes = await tx.build({ client: this.suiClient });
       const { signature } = await this.keypair.signTransaction(txBytes);
@@ -321,7 +319,7 @@ export class DeepBookMarginToolkit {
         amount
       );
 
-      const withdrawnCoin = withdrawFunc(tx as any);
+      const withdrawnCoin = withdrawFunc(tx);
 
       // Transfer withdrawn coin to sender | 將提取的 coin 轉給發送者
       tx.transferObjects([withdrawnCoin], this.address);
@@ -361,7 +359,7 @@ export class DeepBookMarginToolkit {
       tx.setSender(this.address);
 
       // Add withdrawReferralFees call | 添加 withdrawReferralFees 調用
-      tx.add(this.marginPoolContract.withdrawReferralFees(coin, referralId) as any);
+      tx.add(this.marginPoolContract.withdrawReferralFees(coin, referralId));
 
       const txBytes = await tx.build({ client: this.suiClient });
       const { signature } = await this.keypair.signTransaction(txBytes);
@@ -400,7 +398,7 @@ export class DeepBookMarginToolkit {
       // Query user supply amount in margin pool | 查詢用戶在 margin pool 中的供應量
       const tx = new Transaction();
       tx.setSender(this.address);
-      tx.add(this.marginPoolContract.userSupplyAmount(coin, this.supplierCapId) as any);
+      tx.add(this.marginPoolContract.userSupplyAmount(coin, this.supplierCapId));
 
       const txBytes = await tx.build({ client: this.suiClient });
       const result = await this.suiClient.core.simulateTransaction({
