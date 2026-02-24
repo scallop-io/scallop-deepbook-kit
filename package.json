@@ -1,7 +1,7 @@
 {
   "type": "module",
   "name": "@scallop-io/scallop-deepbook-kit",
-  "version": "1",
+  "version": "1.0.0",
   "description": "A toolkit for integrating Scallop with DeepBook functionality",
   "keywords": [
     "scallop",
