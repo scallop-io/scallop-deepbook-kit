@@ -14,14 +14,14 @@ export default defineConfig((options) => {
     clean: true,
 
     // Generate source maps for easier debugging in development.
-    sourcemap: isProduction ? false : true,
+    sourcemap: !isProduction,
 
     // Output formats: ESM (ECMAScript Modules) for modern environments
     // and CJS (CommonJS) for Node.js and older toolchains.
     format: ['esm', 'cjs'],
 
     // Minify the output for production builds to reduce file size.
-    minify: true,
+    minify: isProduction,
 
     // Target a specific ECMAScript version for broader compatibility.
     // 'esnext' is often suitable for modern libraries.

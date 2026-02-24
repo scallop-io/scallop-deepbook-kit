@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.2.2](https://github.com/scallop-io/scallop-deepbook-kit/compare/v0.2.1...v1.0.0) (2026-02-24)
+
+### ⚠ BREAKING CHANGES
+
+Migrated to `@mysten/sui@2` and `@scallop-io/sui-kit@2`. Minimum Node.js version is now 22+ (ESM-only).
+
+- Update all API calls to use `SuiGrpcClient` with `client.core.*` namespace ([9e399bd](https://github.com/scallop-io/scallop-deepbook-kit/commit/9e399bd))
+- Change transaction result access from `result.effects.status.status` to `(result.Transaction ?? result.FailedTransaction).status.success` ([9e399bd](https://github.com/scallop-io/scallop-deepbook-kit/commit/9e399bd))
+- Change object access from `.data.content` to `.object` and `.json` for field access ([9e399bd](https://github.com/scallop-io/scallop-deepbook-kit/commit/9e399bd))
+
+### Removed
+
+- Nested `.fields` access patterns (v2 auto-unwraps fields from `.json`) ([9e399bd](https://github.com/scallop-io/scallop-deepbook-kit/commit/9e399bd))
+
 ### [0.2.1](https://github.com/scallop-io/scallop-deepbook-kit/compare/v0.2.0...v0.2.1) (2026-02-12)
 
 ### Changed
@@ -10,7 +24,7 @@ All notable changes to this project will be documented in this file. See [standa
 
 ### [0.2.0](https://github.com/scallop-io/scallop-deepbook-kit/compare/v0.1.7...v0.2.0) (2026-02-12)
 
-### Breaking Changes
+### ⚠ BREAKING CHANGES
 
 - Set `"type": "module"` in `package.json` (all `.js` files are now ESM by default; update your imports and tooling if you relied on CommonJS)
 

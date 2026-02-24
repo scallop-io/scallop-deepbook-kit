@@ -1,6 +1,7 @@
 import { Coin, DeepBookConfig, FLOAT_SCALAR, MarginPoolContract } from '@mysten/deepbook-v3';
 import { bcs } from '@mysten/sui/bcs';
-import { DevInspectResults, getFullnodeUrl, SuiClient } from '@mysten/sui/client';
+import { type SuiClientTypes } from '@mysten/sui/client';
+import { SuiGrpcClient } from '@mysten/sui/grpc';
 import { Transaction } from '@mysten/sui/transactions';
 import { BigNumber } from 'bignumber.js';
 import {
@@ -9,9 +10,10 @@ import {
   MARGIN_POOL_W_SUPPLIER_CAP_PARAM_KEYS,
   MarginPoolParamKey,
   MarginPoolWithSupplierCapParamKey,
-} from '../margin-pool-config';
-import { mul, normalize } from '../utils/math';
-import { NetworkType } from './types';
+} from '../margin-pool-config.js';
+import { mul, normalize } from '../utils/math.js';
+import { getGrpcFullnodeUrl } from '../utils/network.js';
+import { NetworkType } from './types.js';
 
 type InterestConfig = {
   highKink: number;
@@ -61,7 +63,7 @@ const isWithSupplierCapKey = (
 
 type DeepBookMarginPoolParams = {
   address?: string;
-  suiClient?: SuiClient;
+  suiClient?: SuiGrpcClient;
   network?: NetworkType;
   dbConfig?: DeepBookConfig;
 };
@@ -77,18 +79,20 @@ type DeepBookMarginPoolParams = {
 export class DeepBookMarginPool {
   marginPoolContract: MarginPoolContract;
   dbConfig: DeepBookConfig;
-  suiClient: SuiClient;
+  suiClient: SuiGrpcClient;
 
   /**
    * @param dbConfig - DeepBook configuration instance.
-   * @param suiClient - Optional SuiClient; defaults to fullnode client based on config network.
+   * @param suiClient - Optional SuiGrpcClient; defaults to fullnode client based on config network.
    */
   constructor({ network, address = '', suiClient, dbConfig }: DeepBookMarginPoolParams = {}) {
     // If dbConfig is provided and network is not, derive network from dbConfig
-    const resolvedNetwork = network ?? dbConfig?.network ?? 'mainnet';
+    const resolvedNetwork = (network ?? dbConfig?.network ?? 'mainnet') as NetworkType;
 
     this.dbConfig = dbConfig ?? new DeepBookConfig({ network: resolvedNetwork, address });
-    this.suiClient = suiClient ?? new SuiClient({ url: getFullnodeUrl(resolvedNetwork) });
+    this.suiClient =
+      suiClient ??
+      new SuiGrpcClient({ baseUrl: getGrpcFullnodeUrl(resolvedNetwork), network: resolvedNetwork });
 
     // Initialize smart contract wrapper
     this.marginPoolContract = new MarginPoolContract(this.dbConfig);
@@ -159,16 +163,16 @@ export class DeepBookMarginPool {
    * Used to extract actual values returned from contract functions.
    */
   private parseInspectResultToBcsStructs(
-    inspectResults: DevInspectResults,
+    inspectResults: SuiClientTypes.SimulateTransactionResult<{ commandResults: true }>,
     keys: (MarginPoolParamKey | MarginPoolWithSupplierCapParamKey)[]
   ): Record<MarginPoolParamKey | MarginPoolWithSupplierCapParamKey, string> {
-    const results = inspectResults.results;
-    if (!results) throw new Error('No results found in DevInspect output.');
+    const results = inspectResults.commandResults;
+    if (!results) throw new Error('No results found in simulateTransaction output.');
 
     return keys.reduce(
       (acc, key, idx) => {
         // Raw bytes returned from devInspect
-        const bytes = results[idx]?.returnValues?.[0]?.[0];
+        const bytes = results[idx]?.returnValues?.[0]?.bcs;
         if (!bytes) return acc;
 
         // Decode bytes according to struct map
@@ -311,14 +315,14 @@ export class DeepBookMarginPool {
    */
   async #getInterestConfig(coinKey: string, borrowAprScaled: bigint) {
     const { address } = this.dbConfig.getMarginPool(coinKey);
-    const response = await this.suiClient.getObject({
-      id: address,
-      options: {
-        showContent: true,
+    const response = await this.suiClient.core.getObject({
+      objectId: address,
+      include: {
+        json: true,
       },
     });
 
-    const fields = (response.data?.content as any).fields;
+    const fields = (response.object?.json as any)?.fields;
     const config = fields.config.fields;
     const interestConfig = config.interest_config.fields as RawInterestConfig;
     const marginPoolConfig = config.margin_pool_config.fields as RawMarginPoolConfig;
@@ -394,9 +398,16 @@ export class DeepBookMarginPool {
       ...MARGIN_POOL_W_SUPPLIER_CAP_PARAM_KEYS,
     ];
 
-    const inspectResult = await this.suiClient.devInspectTransactionBlock({
-      transactionBlock: tx,
-      sender: this.dbConfig.address,
+    // Use a fallback address for simulation if not provided (simulation doesn't require a real sender)
+    const sender =
+      this.dbConfig.address || '0x0000000000000000000000000000000000000000000000000000000000000000';
+    tx.setSender(sender);
+    const txBytes = await tx.build({ client: this.suiClient });
+    const inspectResult = await this.suiClient.core.simulateTransaction({
+      transaction: txBytes,
+      include: {
+        commandResults: true,
+      },
     });
 
     const parsed = this.parseInspectResultToBcsStructs(inspectResult, allKeys);
