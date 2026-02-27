@@ -321,12 +321,12 @@ export class DeepBookMarginPool {
         json: true,
       },
     });
-
-    const fields = (response.object?.json as any)?.fields;
-    const config = fields.config.fields;
-    const interestConfig = config.interest_config.fields as RawInterestConfig;
-    const marginPoolConfig = config.margin_pool_config.fields as RawMarginPoolConfig;
-    const statePoolConfig = fields.state.fields as RawStatePoolConfig;
+    // gRPC returns Move object fields directly in json (no .fields wrapper)
+    const json = response.object?.json as any;
+    const config = json?.config;
+    const interestConfig = config?.interest_config as RawInterestConfig;
+    const marginPoolConfig = config?.margin_pool_config as RawMarginPoolConfig;
+    const statePoolConfig = json?.state as RawStatePoolConfig;
 
     const { normalized } = this.calculateKinksAndRate(
       interestConfig,
@@ -402,6 +402,8 @@ export class DeepBookMarginPool {
     const sender =
       this.dbConfig.address || '0x0000000000000000000000000000000000000000000000000000000000000000';
     tx.setSender(sender);
+    tx.setGasBudget(50_000_000_000n);
+    tx.setGasPayment([]);
     const txBytes = await tx.build({ client: this.suiClient });
     const inspectResult = await this.suiClient.core.simulateTransaction({
       transaction: txBytes,
