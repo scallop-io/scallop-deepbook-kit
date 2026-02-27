@@ -17,6 +17,37 @@ function makeSimulateTransactionResult(keys: string[]) {
   } as any;
 }
 
+function makeGrpcMarginPoolObject({
+  totalBorrow = '500000000',
+}: {
+  totalBorrow?: string;
+} = {}) {
+  return {
+    object: {
+      json: {
+        config: {
+          interest_config: {
+            base_rate: '100000000',
+            base_slope: '0',
+            excess_slope: '0',
+            optimal_utilization: '800000000',
+          },
+          margin_pool_config: {
+            max_utilization_rate: '1000000000',
+            min_borrow: '0',
+            protocol_spread: '0',
+            supply_cap: '0',
+          },
+        },
+        state: {
+          total_supply: '1000000000',
+          total_borrow: totalBorrow,
+        },
+      },
+    },
+  } as any;
+}
+
 describe('DeepBookMarginPool (unit)', () => {
   let suiClientMock: {
     core: {
@@ -98,40 +129,7 @@ describe('DeepBookMarginPool (unit)', () => {
       ])
     );
 
-    suiClientMock.core.getObject.mockResolvedValue({
-      object: {
-        json: {
-          fields: {
-            config: {
-              fields: {
-                interest_config: {
-                  fields: {
-                    base_rate: '100000000',
-                    base_slope: '0',
-                    excess_slope: '0',
-                    optimal_utilization: '800000000',
-                  },
-                },
-                margin_pool_config: {
-                  fields: {
-                    max_utilization_rate: '1000000000',
-                    min_borrow: '0',
-                    protocol_spread: '0',
-                    supply_cap: '0',
-                  },
-                },
-              },
-            },
-            state: {
-              fields: {
-                total_supply: '1000000000',
-                total_borrow: '500000000',
-              },
-            },
-          },
-        },
-      },
-    } as any);
+    suiClientMock.core.getObject.mockResolvedValue(makeGrpcMarginPoolObject());
 
     const parsed = {
       supplyCap: '0',
@@ -208,41 +206,36 @@ describe('DeepBookMarginPool (unit)', () => {
       interestRate: 0.13234969199999999,
     } as any);
 
-    suiClientMock.core.getObject.mockResolvedValue({
-      object: {
-        json: {
-          fields: {
-            config: {
-              fields: {
-                interest_config: {
-                  fields: {
-                    base_rate: '100000000',
-                    base_slope: '0',
-                    excess_slope: '0',
-                    optimal_utilization: '800000000',
-                  },
-                },
-                margin_pool_config: {
-                  fields: {
-                    max_utilization_rate: '1000000000',
-                    protocol_spread: '0',
-                    min_borrow: '0',
-                    supply_cap: '0',
-                  },
-                },
-              },
-            },
-            state: {
-              fields: {
-                total_supply: '1000000000',
-                total_borrow: '0',
-              },
-            },
-          },
-        },
-      },
-    } as any);
+    suiClientMock.core.getObject.mockResolvedValue(makeGrpcMarginPoolObject({ totalBorrow: '0' }));
 
     await expect(marginPool.getPoolParameters('SUI')).resolves.toBeDefined();
+  });
+
+  it('sets explicit gas budget/payment when inspecting pool parameters', async () => {
+    const marginPool = new DeepBookMarginPool({ suiClient: suiClientMock as any });
+    const setGasBudgetSpy = vi.spyOn(Transaction.prototype, 'setGasBudget');
+    const setGasPaymentSpy = vi.spyOn(Transaction.prototype, 'setGasPayment');
+    vi.spyOn(Transaction.prototype, 'build').mockResolvedValue(new Uint8Array([1, 2, 3]));
+
+    suiClientMock.core.simulateTransaction.mockResolvedValue(
+      makeSimulateTransactionResult([
+        ...MARGIN_POOL_PARAM_KEYS,
+        ...MARGIN_POOL_W_SUPPLIER_CAP_PARAM_KEYS,
+      ])
+    );
+    suiClientMock.core.getObject.mockResolvedValue(makeGrpcMarginPoolObject());
+
+    const parsed = {
+      interestRate: '132349692',
+    } as any;
+    vi.spyOn(marginPool as any, 'parseInspectResultToBcsStructs').mockReturnValue(parsed);
+    vi.spyOn(marginPool as any, 'formatResult').mockReturnValue({
+      interestRate: 0.132349692,
+    } as any);
+
+    await marginPool.getPoolParameters('SUI');
+
+    expect(setGasBudgetSpy).toHaveBeenCalledWith(50_000_000_000n);
+    expect(setGasPaymentSpy).toHaveBeenCalledWith([]);
   });
 });
