@@ -28,3 +28,6 @@ node_modules/
 # misc
 *.log
 **/.DS_Store
+
+# Claude
+.claude
