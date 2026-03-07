@@ -1,6 +1,11 @@
 import { Coin, DeepBookConfig, FLOAT_SCALAR, MarginPoolContract } from '@mysten/deepbook-v3';
 import { bcs } from '@mysten/sui/bcs';
-import { DevInspectResults, getFullnodeUrl, SuiClient } from '@mysten/sui/client';
+import {
+  DevInspectResults,
+  getFullnodeUrl,
+  SuiClient,
+  SuiObjectResponse,
+} from '@mysten/sui/client';
 import { Transaction } from '@mysten/sui/transactions';
 import { BigNumber } from 'bignumber.js';
 import {
@@ -309,9 +314,9 @@ export class DeepBookMarginPool {
    * @param coinKey - Asset key.
    * @param borrowAprScaled - interestRate in FLOAT_SCALAR scale (bigint).
    */
-  async #getInterestConfig(coinKey: string, borrowAprScaled: bigint) {
+  async #getInterestConfig(coinKey: string, borrowAprScaled: bigint, response?: SuiObjectResponse) {
     const { address } = this.dbConfig.getMarginPool(coinKey);
-    const response = await this.suiClient.getObject({
+    response ??= await this.suiClient.getObject({
       id: address,
       options: {
         showContent: true,
@@ -368,7 +373,6 @@ export class DeepBookMarginPool {
     inspect: false
   ): Promise<Transaction>;
 
-  // 👇 implementation signature (must be last)
   async getPoolParameters(
     coinKey: string,
     supplierCapId?: string,
@@ -408,5 +412,126 @@ export class DeepBookMarginPool {
       ...formattedResult,
       ...interestData,
     };
+  }
+
+  /**
+   * Batch version of getPoolParameters for reduced RPC calls.
+   * Adds all param calls to a single transaction and performs one devInspect.
+   *
+   * @param coinKeys - Asset keys.
+   * @param supplierCapId - Supplier cap object ID.
+   * @param tx - Optional transaction to append to.
+   * @param inspect - Whether to perform devInspect and return decoded results.
+   *
+   * @returns Parsed parameters or transaction object ready for execution.
+   */
+  async getPoolsParameters(
+    coinKeys: string[],
+    supplierCapId?: string,
+    tx?: Transaction
+  ): Promise<MarginPoolParams[]>;
+
+  async getPoolsParameters(
+    coinKeys: string[],
+    supplierCapId: string | undefined,
+    tx: Transaction,
+    inspect: true
+  ): Promise<MarginPoolParams[]>;
+
+  async getPoolsParameters(
+    coinKeys: string[],
+    supplierCapId: string | undefined,
+    tx: Transaction,
+    inspect: false
+  ): Promise<Transaction>;
+
+  async getPoolsParameters(
+    coinKeys: string[],
+    supplierCapId?: string,
+    tx: Transaction = new Transaction(),
+    inspect: boolean = true
+  ): Promise<MarginPoolParams[] | Transaction> {
+    // Add all param calls for every coin into a single transaction
+    for (const coinKey of coinKeys) {
+      MARGIN_POOL_PARAM_KEYS.forEach((paramKey) => this.#addParamCall(tx, paramKey, coinKey));
+
+      if (supplierCapId) {
+        MARGIN_POOL_W_SUPPLIER_CAP_PARAM_KEYS.forEach((paramKey) =>
+          this.#addParamCall(tx, paramKey, coinKey, supplierCapId)
+        );
+      }
+    }
+
+    if (!inspect) return tx;
+
+    // Determine how many result slots each coin occupies
+    const keysPerCoin: (MarginPoolParamKey | MarginPoolWithSupplierCapParamKey)[] = [
+      ...MARGIN_POOL_PARAM_KEYS,
+      ...(supplierCapId ? MARGIN_POOL_W_SUPPLIER_CAP_PARAM_KEYS : []),
+    ];
+    const slotCount = keysPerCoin.length;
+
+    // Single devInspect + batched multiGetObjects (max 50 per call)
+    const objectIds = coinKeys.map((coinKey) => this.dbConfig.getMarginPool(coinKey).address);
+    const MULTI_GET_BATCH_SIZE = 50;
+    const batches: string[][] = [];
+    for (let i = 0; i < objectIds.length; i += MULTI_GET_BATCH_SIZE) {
+      batches.push(objectIds.slice(i, i + MULTI_GET_BATCH_SIZE));
+    }
+
+    const [inspectResult, ...objectBatches] = await Promise.all([
+      this.suiClient.devInspectTransactionBlock({
+        transactionBlock: tx,
+        sender: this.dbConfig.address,
+      }),
+      ...batches.map((ids) =>
+        this.suiClient.multiGetObjects({
+          ids,
+          options: { showContent: true },
+        })
+      ),
+    ]);
+    const interestConfigs = objectBatches.flat();
+
+    const allResults = inspectResult.results;
+    if (!allResults) throw new Error('No results found in DevInspect output.');
+
+    // Split results per coin and format
+    return Promise.all(
+      coinKeys.map(async (coinKey, coinIdx) => {
+        const offset = coinIdx * slotCount;
+
+        // Parse the slice of results belonging to this coin
+        const parsed = keysPerCoin.reduce(
+          (acc, key, keyIdx) => {
+            const bytes = allResults[offset + keyIdx]?.returnValues?.[0]?.[0];
+            if (!bytes) return acc;
+            const bcsType = bcs[MARGIN_POOL_PARAM_KEY_STRUCT_MAP[key]];
+            acc[key] = bcsType.parse(new Uint8Array(bytes));
+            return acc;
+          },
+          {} as Record<MarginPoolParamKey | MarginPoolWithSupplierCapParamKey, string>
+        );
+
+        const formattedResult = this.formatResult(parsed, coinKey);
+        const borrowAprScaled = BigInt(parsed.interestRate ?? 0);
+
+        const interestConfig = interestConfigs[coinIdx];
+        if (!interestConfig || interestConfig.error) {
+          throw new Error(`Failed to fetch interest config for ${coinKey}`);
+        }
+
+        const interestData = await this.#getInterestConfig(
+          coinKey,
+          borrowAprScaled,
+          interestConfig
+        );
+
+        return {
+          ...formattedResult,
+          ...interestData,
+        };
+      })
+    );
   }
 }
