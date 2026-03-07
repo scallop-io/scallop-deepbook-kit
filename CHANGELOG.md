@@ -2,17 +2,6 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
-### [0.3.0](https://github.com/scallop-io/scallop-deepbook-kit/compare/v0.2.1...v0.3.0) (2026-03-08)
-
-### Added
-
-- Add batched `getPoolsParameters` method for querying multiple margin pools in a single transaction
-- Add `multiGetObjects` chunking (max 50 per call) for large batch queries
-
-### Changed
-
-- `#getInterestConfig` now accepts an optional pre-fetched `SuiObjectResponse` to avoid redundant RPC calls
-
 ### [0.2.1](https://github.com/scallop-io/scallop-deepbook-kit/compare/v0.2.0...v0.2.1) (2026-02-12)
 
 ### Changed
