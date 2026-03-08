@@ -92,7 +92,12 @@ export class DeepBookMarginPool {
     // If dbConfig is provided and network is not, derive network from dbConfig
     const resolvedNetwork = network ?? dbConfig?.network ?? 'mainnet';
 
-    this.dbConfig = dbConfig ?? new DeepBookConfig({ network: resolvedNetwork, address });
+    this.dbConfig =
+      dbConfig ??
+      new DeepBookConfig({
+        network: resolvedNetwork,
+        address,
+      });
     this.suiClient = suiClient ?? new SuiClient({ url: getFullnodeUrl(resolvedNetwork) });
 
     // Initialize smart contract wrapper
