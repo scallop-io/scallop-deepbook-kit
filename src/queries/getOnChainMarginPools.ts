@@ -8,11 +8,15 @@ const MARGIN_POOLS_TABLE_ID = '0x7f7351ef7e5089dfddf17f55abe028d719c45ca91d2c23e
  * Fetch all margin pool addresses and their types from the on-chain dynamic fields table.
  * @returns Record<coinKey, { address: string; type: string }>
  */
-export const getOnChainMarginPools = async (
-  suiClient: SuiClient = new SuiClient({
+export const getOnChainMarginPools = async ({
+  suiClient = new SuiClient({
     url: getFullnodeUrl('mainnet'),
-  })
-) => {
+  }),
+  tableId = MARGIN_POOLS_TABLE_ID,
+}: {
+  suiClient?: SuiClient;
+  tableId?: string;
+}) => {
   const marginPools: Array<{ address: string; type: string }> = [];
   const ids: string[] = [];
 
@@ -21,7 +25,7 @@ export const getOnChainMarginPools = async (
 
   while (nextPage) {
     const { data, nextCursor, hasNextPage } = await suiClient.getDynamicFields({
-      parentId: MARGIN_POOLS_TABLE_ID,
+      parentId: tableId,
       cursor,
       limit: 50,
     });
