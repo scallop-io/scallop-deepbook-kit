@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.4.1](https://github.com/scallop-io/scallop-deepbook-kit/compare/v0.4.0...v0.4.1) (2026-03-08)
+
+### Changed
+
+- `getOnChainMarginPools` now accepts an options object (`{ suiClient?, tableId? }`) instead of a positional `suiClient` parameter
+
 ### [0.4.0](https://github.com/scallop-io/scallop-deepbook-kit/compare/v0.3.0...v0.4.0) (2026-03-08)
 
 ### Added
