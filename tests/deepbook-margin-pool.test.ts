@@ -341,6 +341,50 @@ describe('DeepBookMarginPool (unit)', () => {
     );
   });
 
+  it('getPoolsParameters batches getObjects calls in groups of 50', async () => {
+    const marginPool = new DeepBookMarginPool({ suiClient: suiClientMock as any });
+    const validKeys = ['SUI', 'USDC', 'DEEP'];
+    const coinKeys = Array.from({ length: 75 }, (_, idx) => validKeys[idx % validKeys.length]!);
+    const keysPerCoin = MARGIN_POOL_PARAM_KEYS.length;
+
+    vi.spyOn(Transaction.prototype, 'build').mockResolvedValue(new Uint8Array([1, 2, 3]));
+
+    const validU64Bytes = new Uint8Array([0, 0, 0, 0, 0, 0, 0, 0]);
+    suiClientMock.core.simulateTransaction.mockResolvedValue({
+      $kind: 'Transaction' as const,
+      commandResults: Array.from({ length: keysPerCoin * coinKeys.length }, () => ({
+        returnValues: [{ bcs: validU64Bytes }],
+      })),
+    } as any);
+
+    suiClientMock.core.getObjects
+      .mockResolvedValueOnce({
+        objects: Array.from({ length: 50 }, () => makeGrpcMarginPoolObject().object),
+      })
+      .mockResolvedValueOnce({
+        objects: Array.from({ length: 25 }, () => makeGrpcMarginPoolObject().object),
+      });
+
+    vi.spyOn(marginPool as any, 'formatResult').mockReturnValue({
+      interestRate: 0,
+      decimals: 9,
+      highKink: 0,
+      baseBorrowApr: 0,
+      borrowAprOnHighKink: 0,
+      maxBorrowApr: 0,
+      supplyApr: 0,
+      utilizationRate: 0,
+    });
+
+    const results = await marginPool.getPoolsParameters(coinKeys);
+
+    expect(results).toHaveLength(75);
+    expect(suiClientMock.core.getObjects).toHaveBeenCalledTimes(2);
+    expect(suiClientMock.core.getObjects.mock.calls[0]?.[0]?.objectIds).toHaveLength(50);
+    expect(suiClientMock.core.getObjects.mock.calls[1]?.[0]?.objectIds).toHaveLength(25);
+    expect(suiClientMock.core.simulateTransaction).toHaveBeenCalledTimes(1);
+  });
+
   it('sets explicit gas budget/payment when inspecting pool parameters', async () => {
     const marginPool = new DeepBookMarginPool({ suiClient: suiClientMock as any });
     const setGasBudgetSpy = vi.spyOn(Transaction.prototype, 'setGasBudget');
