@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.0.2](https://github.com/scallop-io/scallop-deepbook-kit/compare/v1.0.1...v1.0.2) (2026-03-12)
+
+### Added
+
+- Export `getOnChainMarginPools` query for fetching all margin pool addresses and types from on-chain dynamic fields ([30680c7](https://github.com/scallop-io/scallop-deepbook-kit/commit/30680c7))
+- Batch `getObjects` calls in groups of 50 in `getPoolsParameters` to support large coin key lists ([30680c7](https://github.com/scallop-io/scallop-deepbook-kit/commit/30680c7))
+
+### Fixed
+
+- Fix zero division error in utilization rate calculation when `total_supply` is 0 ([e9fd422](https://github.com/scallop-io/scallop-deepbook-kit/commit/e9fd422))
+
 ### [1.0.1](https://github.com/scallop-io/scallop-deepbook-kit/compare/v1.0.0...v1.0.1) (2026-02-27)
 
 ### Fixed
