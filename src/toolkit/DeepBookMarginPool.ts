@@ -281,13 +281,15 @@ export class DeepBookMarginPool {
     const borrowAprOnHighKink = this.computeBorrowAprAtUtil(highKink, interestConfig);
     const maxBorrowApr = this.computeBorrowAprAtUtil(maxKink, interestConfig);
 
-    const utilizationRate = BigInt(
-      BigNumber(state.total_borrow)
-        .dividedBy(state.total_supply)
-        .shiftedBy(9)
-        .decimalPlaces(0)
-        .toString()
-    );
+    const utilizationRate = BigNumber(state.total_supply).isZero()
+      ? 0n
+      : BigInt(
+          BigNumber(state.total_borrow)
+            .dividedBy(state.total_supply)
+            .shiftedBy(9)
+            .decimalPlaces(0)
+            .toString()
+        );
 
     const supplyApr = mul(
       mul(borrowAprScaled, utilizationRate),
@@ -496,6 +498,7 @@ export class DeepBookMarginPool {
         })
       ),
     ]);
+
     const interestConfigs = objectBatches.flat();
 
     const allResults = inspectResult.results;
