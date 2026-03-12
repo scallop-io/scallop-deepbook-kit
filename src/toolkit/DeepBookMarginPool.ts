@@ -484,6 +484,10 @@ export class DeepBookMarginPool {
 
     // Single simulateTransaction + batched getObjects
     const objectIds = coinKeys.map((coinKey) => this.dbConfig.getMarginPool(coinKey).address);
+    const objectIdChunks: string[][] = [];
+    for (let i = 0; i < objectIds.length; i += 50) {
+      objectIdChunks.push(objectIds.slice(i, i + 50));
+    }
 
     const sender =
       this.dbConfig.address || '0x0000000000000000000000000000000000000000000000000000000000000000';
@@ -492,18 +496,21 @@ export class DeepBookMarginPool {
     tx.setGasPayment([]);
     const txBytes = await tx.build({ client: this.suiClient });
 
-    const [inspectResult, objectsResponse] = await Promise.all([
+    const [inspectResult, ...objectResponses] = await Promise.all([
       this.suiClient.core.simulateTransaction({
         transaction: txBytes,
         include: {
           commandResults: true,
         },
       }),
-      this.suiClient.core.getObjects({
-        objectIds,
-        include: { json: true },
-      }),
+      ...objectIdChunks.map((chunk) =>
+        this.suiClient.core.getObjects({
+          objectIds: chunk,
+          include: { json: true },
+        })
+      ),
     ]);
+    const objects = objectResponses.flatMap((response) => response.objects);
 
     const allResults = inspectResult.commandResults;
     if (!allResults) throw new Error('No results found in simulateTransaction output.');
@@ -528,7 +535,7 @@ export class DeepBookMarginPool {
         const formattedResult = this.formatResult(parsed, coinKey);
         const borrowAprScaled = BigInt(parsed.interestRate ?? 0);
 
-        const objectResult = objectsResponse.objects[coinIdx];
+        const objectResult = objects[coinIdx];
         if (!objectResult || 'code' in objectResult) {
           throw new Error(`Failed to fetch interest config for ${coinKey}`);
         }
