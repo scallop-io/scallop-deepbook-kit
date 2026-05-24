@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.4.3](https://github.com/scallop-io/scallop-deepbook-kit/compare/v0.4.2...v0.4.3) (2026-05-25)
+
+### Changed
+
+- Pin runtime dependencies to exact versions ([7f045f8](https://github.com/scallop-io/scallop-deepbook-kit/commit/7f045f8497c21b64f19750fa4b7ec8af9ed50644))
+
 ### [0.4.2](https://github.com/scallop-io/scallop-deepbook-kit/compare/v0.4.1...v0.4.2) (2026-03-12)
 
 ### Fixed
