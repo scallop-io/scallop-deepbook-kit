@@ -29,6 +29,7 @@ export const getOnChainMarginPools = async ({
   while (nextPage) {
     const {
       dynamicFields,
+      // @ts-ignore
       cursor: nextCursor,
       hasNextPage,
     } = await suiClient.listDynamicFields({
