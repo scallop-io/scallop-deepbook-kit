@@ -38,14 +38,18 @@ jobs:
         run: pnpm run build
 
       - name: Determine npm tag
-        id: npm_tag
         run: |
-          if [[ "${{ github.ref_name }}" == *"alpha."* ]]; then
+          REF="${{ github.ref_name }}"
+          if [[ "$REF" == *"alpha."* ]]; then
             echo "tag=alpha" >> $GITHUB_ENV
-          elif [[ "${{ github.ref_name }}" == *"rc."* ]]; then
+          elif [[ "$REF" == *"beta."* ]]; then
+            echo "tag=beta" >> $GITHUB_ENV
+          elif [[ "$REF" == *"rc."* ]]; then
             echo "tag=rc" >> $GITHUB_ENV
-          else
+          elif [[ "${{ github.event.release.make_latest }}" == "true" ]]; then
             echo "tag=latest" >> $GITHUB_ENV
+          else
+            echo "tag=legacy" >> $GITHUB_ENV
           fi
 
       # Publish to npmjs.com via OIDC — use npm (not pnpm) for OIDC token exchange
