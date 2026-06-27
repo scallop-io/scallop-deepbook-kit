@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.0.0](https://github.com/scallop-io/scallop-deepbook-kit/compare/v1.0.2...v2.0.0) (2026-06-27)
+
+### ⚠ BREAKING CHANGES
+
+`@mysten/sui` and `@mysten/bcs` are now `peerDependencies` instead of `dependencies`. Consumers must install them explicitly (`@mysten/sui@2.20.0`, `@mysten/bcs@2.1.0`).
+
+### Changed
+
+- Move `@mysten/sui` and `@mysten/bcs` from `dependencies` to `peerDependencies` ([c1bd717](https://github.com/scallop-io/scallop-deepbook-kit/commit/c1bd717))
+
+### Security
+
+- Add pnpm overrides pinning transitive dependencies to patched versions (axios, vite, follow-redirects, form-data, and others) ([c1bd717](https://github.com/scallop-io/scallop-deepbook-kit/commit/c1bd717))
+
+### Fixed
+
+- Suppress type error on `listDynamicFields` cursor in `getOnChainMarginPools` ([799f761](https://github.com/scallop-io/scallop-deepbook-kit/commit/799f761))
+
 ### [1.0.2](https://github.com/scallop-io/scallop-deepbook-kit/compare/v1.0.1...v1.0.2) (2026-03-12)
 
 ### Added
