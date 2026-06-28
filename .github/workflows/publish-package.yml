@@ -38,6 +38,10 @@ jobs:
         run: pnpm run build
 
       - name: Determine npm tag
+        id: npm_tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REF: ${{ github.ref_name }}
         run: |
           REF="${{ github.ref_name }}"
           if [[ "$REF" == *"alpha."* ]]; then
