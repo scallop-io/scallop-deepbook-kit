@@ -39,10 +39,13 @@ jobs:
 
       - name: Determine npm tag
         id: npm_tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REF: ${{ github.ref_name }}
         run: |
-          if [[ "${{ github.ref_name }}" == *"alpha."* ]]; then
+          if [[ "$REF" == *"alpha."* ]]; then
             echo "tag=alpha" >> $GITHUB_ENV
-          elif [[ "${{ github.ref_name }}" == *"rc."* ]]; then
+          elif [[ "$REF" == *"rc."* ]]; then
             echo "tag=rc" >> $GITHUB_ENV
           else
             # The release webhook payload has no reliable make_latest field,
