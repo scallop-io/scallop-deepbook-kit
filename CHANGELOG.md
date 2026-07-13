@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.0.2](https://github.com/scallop-io/scallop-deepbook-kit/compare/v2.0.1...v2.0.2) (2026-07-13)
+
+### Fixed
+
+- `getOnChainMarginPools` now fetches dynamic-field values inline (`include: { value: true }`) and decodes the coin type and pool address via BCS, replacing the broken two-step `getObjects` lookup ([c0df3b6](https://github.com/scallop-io/scallop-deepbook-kit/commit/c0df3b66e306cd61231938b1cea56391cfb49cd5))
+
+### Added
+
+- Add on-chain margin pools usage example ([5ed4c14](https://github.com/scallop-io/scallop-deepbook-kit/commit/5ed4c145233296587e577447542114c3862e059a))
+
 ## [2.0.0](https://github.com/scallop-io/scallop-deepbook-kit/compare/v1.0.2...v2.0.0) (2026-06-27)
 
 ### ⚠ BREAKING CHANGES
