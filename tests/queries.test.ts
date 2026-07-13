@@ -1,29 +1,31 @@
 import { describe, beforeEach, expect, it, vi } from 'vitest';
+import { bcs } from '@mysten/sui/bcs';
 import { getOnChainMarginPools } from '../src/queries/getOnChainMarginPools';
 
-function makeDynamicFieldItem(fieldId: string) {
-  return { fieldId };
-}
-
-function makeMarginPoolObject(name: string, address: string) {
+// Mirrors a `listDynamicFields({ include: { value: true } })` entry: the coin
+// type is the field *name* (BCS-encoded string), the pool address is the field
+// *value* (BCS-encoded address). Encoding with the real bcs codec means these
+// tests actually exercise the decode logic, not a hand-mocked shape.
+function makeField(typeStr: string, address: string) {
   return {
-    json: {
-      value: address,
-      name: { name },
-    },
+    fieldId: '0xfield',
+    $kind: 'DynamicField' as const,
+    name: { type: '0x1::type_name::TypeName', bcs: bcs.string().serialize(typeStr).toBytes() },
+    value: { type: 'address', bcs: bcs.Address.serialize(address).toBytes() },
   };
 }
+
+// Addresses come back through bcs.Address (normalized to 0x + 64 hex).
+const normAddr = (a: string) => bcs.Address.parse(bcs.Address.serialize(a).toBytes());
 
 describe('getOnChainMarginPools', () => {
   let suiClientMock: {
     listDynamicFields: ReturnType<typeof vi.fn>;
-    getObjects: ReturnType<typeof vi.fn>;
   };
 
   beforeEach(() => {
     suiClientMock = {
       listDynamicFields: vi.fn(),
-      getObjects: vi.fn(),
     };
   });
 
@@ -33,42 +35,51 @@ describe('getOnChainMarginPools', () => {
       cursor: null,
       hasNextPage: false,
     });
-    suiClientMock.getObjects.mockResolvedValue({ objects: [] });
 
     const result = await getOnChainMarginPools({ suiClient: suiClientMock as any });
     expect(result).toEqual({});
   });
 
-  it('parses margin pools correctly', async () => {
-    const poolAddress = '0xabc123';
+  it('decodes the coin type and pool address from the field name/value BCS', async () => {
     const poolType = '2::sui::SUI';
+    const poolAddress = '0xabc123';
 
     suiClientMock.listDynamicFields.mockResolvedValue({
-      dynamicFields: [makeDynamicFieldItem('0xobj1')],
+      dynamicFields: [makeField(poolType, poolAddress)],
       cursor: null,
       hasNextPage: false,
-    });
-    suiClientMock.getObjects.mockResolvedValue({
-      objects: [makeMarginPoolObject(poolType, poolAddress)],
     });
 
     const result = await getOnChainMarginPools({ suiClient: suiClientMock as any });
 
     expect(result).toHaveProperty('SUI');
     expect(result.SUI).toEqual({
-      address: poolAddress,
       type: `0x${poolType}`,
+      address: normAddr(poolAddress),
     });
+  });
+
+  // Would fail if name.bcs and value.bcs were read in the wrong order (a real
+  // risk given both are Uint8Array): the address bytes are not a valid utf-8
+  // string and the type bytes are not a valid 32-byte address.
+  it('does not confuse the type field with the address field', async () => {
+    suiClientMock.listDynamicFields.mockResolvedValue({
+      dynamicFields: [makeField('2::usdc::USDC', '0xdead')],
+      cursor: null,
+      hasNextPage: false,
+    });
+
+    const result = await getOnChainMarginPools({ suiClient: suiClientMock as any });
+
+    expect(result.USDC?.type).toBe('0x2::usdc::USDC');
+    expect(result.USDC?.address).toBe(normAddr('0xdead'));
   });
 
   it('strips underscores from coin name keys', async () => {
     suiClientMock.listDynamicFields.mockResolvedValue({
-      dynamicFields: [makeDynamicFieldItem('0xobj1')],
+      dynamicFields: [makeField('2::deep::DEEP_USD', '0xbeef')],
       cursor: null,
       hasNextPage: false,
-    });
-    suiClientMock.getObjects.mockResolvedValue({
-      objects: [makeMarginPoolObject('2::deep::DEEP_USD', '0xaddr')],
     });
 
     const result = await getOnChainMarginPools({ suiClient: suiClientMock as any });
@@ -76,60 +87,58 @@ describe('getOnChainMarginPools', () => {
     expect(result).not.toHaveProperty('DEEP_USD');
   });
 
-  it('paginates through multiple pages of dynamic fields', async () => {
+  // Regression guard for the previous bug: values must be fetched inline via
+  // `include: { value: true }`. Without it, `item.value` is undefined and
+  // decoding throws — the old mock-based tests never asserted this.
+  it('requests dynamic field values inline (include.value)', async () => {
+    suiClientMock.listDynamicFields.mockResolvedValue({
+      dynamicFields: [makeField('2::sui::SUI', '0xbeef')],
+      cursor: null,
+      hasNextPage: false,
+    });
+
+    await getOnChainMarginPools({ suiClient: suiClientMock as any });
+
+    expect(suiClientMock.listDynamicFields).toHaveBeenCalledWith(
+      expect.objectContaining({ include: { value: true } })
+    );
+  });
+
+  it('paginates by threading the cursor forward across pages', async () => {
     suiClientMock.listDynamicFields
       .mockResolvedValueOnce({
-        dynamicFields: [makeDynamicFieldItem('0xobj1')],
+        dynamicFields: [makeField('2::sui::SUI', '0xbeef1')],
         cursor: 'cursor1',
         hasNextPage: true,
       })
       .mockResolvedValueOnce({
-        dynamicFields: [makeDynamicFieldItem('0xobj2')],
+        dynamicFields: [makeField('2::usdc::USDC', '0xbeef2')],
         cursor: null,
         hasNextPage: false,
       });
-    suiClientMock.getObjects.mockResolvedValue({
-      objects: [
-        makeMarginPoolObject('2::sui::SUI', '0xaddr1'),
-        makeMarginPoolObject('2::usdc::USDC', '0xaddr2'),
-      ],
-    });
 
     const result = await getOnChainMarginPools({ suiClient: suiClientMock as any });
 
     expect(suiClientMock.listDynamicFields).toHaveBeenCalledTimes(2);
+    // First page starts with a null cursor...
+    expect(suiClientMock.listDynamicFields.mock.calls[0]?.[0]).toMatchObject({ cursor: null });
+    // ...and the second page must reuse the cursor returned by the first.
+    expect(suiClientMock.listDynamicFields.mock.calls[1]?.[0]).toMatchObject({ cursor: 'cursor1' });
     expect(Object.keys(result)).toHaveLength(2);
     expect(result).toHaveProperty('SUI');
     expect(result).toHaveProperty('USDC');
   });
 
-  it('skips objects with missing json fields', async () => {
+  it('stops paginating once hasNextPage is false', async () => {
     suiClientMock.listDynamicFields.mockResolvedValue({
-      dynamicFields: [makeDynamicFieldItem('0xobj1'), makeDynamicFieldItem('0xobj2')],
-      cursor: null,
+      dynamicFields: [makeField('2::sui::SUI', '0xbeef')],
+      cursor: 'somecursor',
       hasNextPage: false,
     });
-    suiClientMock.getObjects.mockResolvedValue({
-      objects: [makeMarginPoolObject('2::sui::SUI', '0xaddr1'), { json: {} }],
-    });
 
-    const result = await getOnChainMarginPools({ suiClient: suiClientMock as any });
-    expect(Object.keys(result)).toHaveLength(1);
-    expect(result).toHaveProperty('SUI');
-  });
+    await getOnChainMarginPools({ suiClient: suiClientMock as any });
 
-  it('skips object fetch errors', async () => {
-    suiClientMock.listDynamicFields.mockResolvedValue({
-      dynamicFields: [makeDynamicFieldItem('0xobj1'), makeDynamicFieldItem('0xobj2')],
-      cursor: null,
-      hasNextPage: false,
-    });
-    suiClientMock.getObjects.mockResolvedValue({
-      objects: [makeMarginPoolObject('2::sui::SUI', '0xaddr1'), new Error('not found')],
-    });
-
-    const result = await getOnChainMarginPools({ suiClient: suiClientMock as any });
-    expect(Object.keys(result)).toHaveLength(1);
+    expect(suiClientMock.listDynamicFields).toHaveBeenCalledTimes(1);
   });
 
   it('uses custom tableId when provided', async () => {
@@ -139,38 +148,11 @@ describe('getOnChainMarginPools', () => {
       cursor: null,
       hasNextPage: false,
     });
-    suiClientMock.getObjects.mockResolvedValue({ objects: [] });
 
     await getOnChainMarginPools({ suiClient: suiClientMock as any, tableId: customTableId });
 
     expect(suiClientMock.listDynamicFields).toHaveBeenCalledWith(
       expect.objectContaining({ parentId: customTableId })
     );
-  });
-
-  it('batches getObjects calls in groups of 50', async () => {
-    const fieldIds = Array.from({ length: 75 }, (_, idx) => makeDynamicFieldItem(`0xobj${idx}`));
-    suiClientMock.listDynamicFields.mockResolvedValue({
-      dynamicFields: fieldIds,
-      cursor: null,
-      hasNextPage: false,
-    });
-    suiClientMock.getObjects
-      .mockResolvedValueOnce({
-        objects: Array.from({ length: 50 }, (_, idx) =>
-          makeMarginPoolObject(`2::coin::COIN_${idx}`, `0xaddr${idx}`)
-        ),
-      })
-      .mockResolvedValueOnce({
-        objects: Array.from({ length: 25 }, (_, idx) =>
-          makeMarginPoolObject(`2::coin::TAIL_${idx}`, `0xtail${idx}`)
-        ),
-      });
-
-    await getOnChainMarginPools({ suiClient: suiClientMock as any });
-
-    expect(suiClientMock.getObjects).toHaveBeenCalledTimes(2);
-    expect(suiClientMock.getObjects.mock.calls[0]?.[0]?.objectIds).toHaveLength(50);
-    expect(suiClientMock.getObjects.mock.calls[1]?.[0]?.objectIds).toHaveLength(25);
   });
 });

@@ -2,9 +2,14 @@ import type { MarginPool } from '@mysten/deepbook-v3';
 import { SuiGrpcClient } from '@mysten/sui/grpc';
 import { parseStructTag } from '@mysten/sui/utils';
 import { getGrpcFullnodeUrl } from '../utils/network.js';
+import { bcs } from '@mysten/sui/bcs';
 
 const MARGIN_POOLS_TABLE_ID = '0x7f7351ef7e5089dfddf17f55abe028d719c45ca91d2c23e45a441ba65897f804';
-const OBJECT_BATCH_SIZE = 50;
+
+declare const _grpcClient: SuiGrpcClient;
+type ResponseType<Include extends { value?: boolean } = {}> = Awaited<
+  ReturnType<typeof _grpcClient.listDynamicFields<Include>>
+>;
 
 /**
  * Fetch all margin pool addresses and their types from the on-chain dynamic fields table.
@@ -21,60 +26,35 @@ export const getOnChainMarginPools = async ({
   tableId?: string;
 } = {}) => {
   const marginPools: Array<{ address: string; type: string }> = [];
-  const ids: string[] = [];
 
-  let cursor: string | null = null;
+  let nextCursor: string | null = null;
   let nextPage = true;
 
-  while (nextPage) {
-    const {
-      dynamicFields,
-      // @ts-ignore
-      cursor: nextCursor,
-      hasNextPage,
-    } = await suiClient.listDynamicFields({
+  do {
+    const resp: ResponseType<{ value: true }> = await suiClient.listDynamicFields({
       parentId: tableId,
-      cursor,
+      cursor: nextCursor,
       limit: 50,
+      include: {
+        value: true,
+      },
     });
+    const { dynamicFields, cursor, hasNextPage } = resp;
 
-    ids.push(...dynamicFields.map((item) => item.fieldId));
+    marginPools.push(
+      ...dynamicFields.map((item) => ({
+        type: `0x${bcs.string().parse(item.name.bcs)}`,
+        address: bcs.Address.parse(item.value.bcs),
+      }))
+    );
 
     if (dynamicFields.length === 0) {
       break;
     }
 
-    cursor = nextCursor;
+    nextCursor = cursor;
     nextPage = hasNextPage;
-  }
-
-  for (let i = 0; i < ids.length; i += OBJECT_BATCH_SIZE) {
-    const objectIds = ids.slice(i, i + OBJECT_BATCH_SIZE);
-    const { objects } = await suiClient.getObjects({
-      objectIds,
-      include: { json: true },
-    });
-
-    for (const obj of objects) {
-      if (obj instanceof Error) continue;
-
-      const json = obj.json as
-        | {
-            value?: string;
-            name?: {
-              name?: string;
-            };
-          }
-        | undefined;
-
-      if (!json?.value || !json.name?.name) continue;
-
-      marginPools.push({
-        address: json.value,
-        type: `0x${json.name.name}`,
-      });
-    }
-  }
+  } while (nextPage);
 
   return marginPools.reduce(
     (acc, pool) => {
