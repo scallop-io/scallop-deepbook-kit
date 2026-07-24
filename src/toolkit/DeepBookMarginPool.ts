@@ -1,6 +1,6 @@
 import { Coin, DeepBookConfig, FLOAT_SCALAR, MarginPoolContract } from '@mysten/deepbook-v3';
 import { bcs } from '@mysten/sui/bcs';
-import { type SuiClientTypes } from '@mysten/sui/client';
+import { ClientWithCoreApi, type SuiClientTypes } from '@mysten/sui/client';
 import { SuiGrpcClient } from '@mysten/sui/grpc';
 import { Transaction } from '@mysten/sui/transactions';
 import { BigNumber } from 'bignumber.js';
@@ -63,7 +63,7 @@ const isWithSupplierCapKey = (
 
 type DeepBookMarginPoolParams = {
   address?: string;
-  suiClient?: SuiGrpcClient;
+  suiClient?: ClientWithCoreApi;
   network?: NetworkType;
   dbConfig?: DeepBookConfig;
 };
@@ -79,7 +79,7 @@ type DeepBookMarginPoolParams = {
 export class DeepBookMarginPool {
   marginPoolContract: MarginPoolContract;
   dbConfig: DeepBookConfig;
-  suiClient: SuiGrpcClient;
+  suiClient: ClientWithCoreApi;
 
   /**
    * @param dbConfig - DeepBook configuration instance.

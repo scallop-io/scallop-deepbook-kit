@@ -35,7 +35,7 @@ A comprehensive toolkit for interacting with DeepBook V3 Margin Pools on the Sui
 
 ## Prerequisites | 環境需求
 
-- **Node.js** >= 18.0.0
+- **Node.js** >= 22.0.0
 - **pnpm** >= 9.0.0
 - **Sui Testnet Account** with SUI and DBUSDC balance
   **Sui 測試網帳戶**，需包含 SUI 和 DBUSDC 餘額
@@ -93,7 +93,7 @@ The demo will:
 ### 3. Use the Toolkit in Your Code | 在程式碼中使用 Toolkit
 
 ```typescript
-import { DeepBookMarginToolkit } from './toolkit';
+import { DeepBookMarginToolkit } from '@scallop-io/scallop-deepbook-kit';
 
 // Initialize the toolkit | 初始化 toolkit
 const toolkit = new DeepBookMarginToolkit({
@@ -221,12 +221,41 @@ Get the Supplier Cap ID.
 
 **Returns | 返回:** Supplier Cap ID or undefined
 
+### DeepBookMarginPool
+
+Read-only class for querying margin pool parameters via `simulateTransaction` (devInspect).
+唯讀類別，透過 `simulateTransaction`（devInspect）查詢 margin pool 參數。
+
+#### Constructor | 建構函式
+
+```typescript
+new DeepBookMarginPool(params?: {
+  network?: NetworkType;
+  address?: string;
+  suiClient?: ClientWithCoreApi;
+  dbConfig?: DeepBookConfig;
+})
+```
+
+#### Methods | 方法
+
+##### `getPoolParameters(coinKey: string, supplierCapId?: string, tx?: Transaction): Promise<MarginPoolParams>`
+
+Fetch and decode a single margin pool's parameters (supply cap, utilization, interest rate config, and — if `supplierCapId` is provided — user supply amount/shares).
+擷取並解碼單一 margin pool 的參數（供應上限、使用率、利率配置，若提供 `supplierCapId` 則包含使用者供應量/份額）。
+
+##### `getPoolsParameters(coinKeys: string[], supplierCapId?: string, tx?: Transaction): Promise<MarginPoolParams[]>`
+
+Batched version of `getPoolParameters` — fetches parameters for multiple coins in a single `simulateTransaction` call.
+`getPoolParameters` 的批次版本 — 在單一 `simulateTransaction` 呼叫中擷取多個幣種的參數。
+
 ## Development Commands | 開發指令
 
 ### Build | 建置
 
 ```bash
-pnpm build          # Compile TypeScript | 編譯 TypeScript
+pnpm build          # Production build (minified, no sourcemaps) | 正式版建置（壓縮、無 sourcemap）
+pnpm build:dev      # Dev build | 開發版建置
 pnpm build:watch    # Watch mode compilation | 監聽模式編譯
 pnpm clean          # Remove build artifacts | 清除建置檔案
 ```
@@ -260,15 +289,23 @@ pnpm example:toolkit  # Run the DeepBook Margin Toolkit demo | 執行 DeepBook M
 .
 ├── src/
 │   ├── toolkit/                    # Core toolkit implementation | 核心 toolkit 實作
-│   │   ├── DeepBookMarginToolkit.ts  # Main toolkit class | 主要 toolkit 類別
+│   │   ├── DeepBookMarginToolkit.ts  # Main toolkit class (write operations) | 主要 toolkit 類別（寫入操作）
+│   │   ├── DeepBookMarginPool.ts     # Read-only pool parameter queries | 唯讀池子參數查詢
 │   │   ├── types.ts                  # Type definitions | 型別定義
 │   │   └── index.ts                  # Exports | 匯出
-│   ├── examples/                   # Example scripts | 範例程式
-│   │   └── toolkit-demo.ts          # Complete demo | 完整示範
+│   ├── queries/                     # Standalone on-chain queries | 獨立的鏈上查詢
+│   │   └── getOnChainMarginPools.ts # Fetch all margin pool addresses/types | 擷取所有 margin pool 地址/類型
+│   ├── examples/                    # Example scripts | 範例程式
+│   │   ├── toolkit-demo.ts           # Complete toolkit demo | 完整 toolkit 示範
+│   │   ├── margin-pool-demo.ts       # Pool parameter query demo | 池子參數查詢示範
+│   │   └── on-chain-pools.ts         # On-chain margin pools demo | 鏈上 margin pools 示範
 │   ├── utils/                      # Utility functions | 工具函式
-│   │   └── env-manager.ts           # Environment variable management | 環境變數管理
+│   │   ├── env-manager.ts           # Environment variable management | 環境變數管理
+│   │   ├── network.ts               # gRPC fullnode URL resolution | gRPC fullnode URL 解析
+│   │   ├── math.ts                  # Fixed-point math helpers | 定點數學輔助函式
+│   │   └── private-key.ts           # Private key normalization | 私鑰格式標準化
 │   ├── config.ts                   # Configuration loader | 配置載入器
-│   └── testnet-config.ts           # Testnet constants | 測試網常數
+│   └── margin-pool-config.ts       # Margin pool BCS param key mappings | Margin pool BCS 參數鍵對應
 ├── tests/                          # Test files | 測試檔案
 ├── dist/                           # Build output (git-ignored) | 建置輸出（git 忽略）
 └── .env                            # Environment variables (git-ignored) | 環境變數（git 忽略）
@@ -278,21 +315,24 @@ pnpm example:toolkit  # Run the DeepBook Margin Toolkit demo | 執行 DeepBook M
 
 ### Core Dependencies | 核心依賴
 
-- **[@mysten/sui](https://www.npmjs.com/package/@mysten/sui)** ^1.44.0 - Sui blockchain SDK | Sui 區塊鏈 SDK
-- **[@mysten/deepbook-v3](https://www.npmjs.com/package/@mysten/deepbook-v3)** ^0.20.2 - DeepBook V3 SDK
-- **[dotenv](https://www.npmjs.com/package/dotenv)** ^17.2.3 - Environment variable management | 環境變數管理
+- **[@mysten/sui](https://www.npmjs.com/package/@mysten/sui)** ~2.22.0 (peerDependency) - Sui blockchain SDK, used via the gRPC client (`SuiGrpcClient`) for all on-chain interactions | Sui 區塊鏈 SDK，透過 gRPC client（`SuiGrpcClient`）進行所有鏈上互動
+- **[@mysten/deepbook-v3](https://www.npmjs.com/package/@mysten/deepbook-v3)** ~1.5.9 (peerDependency) - DeepBook V3 SDK
+- **[@mysten/bcs](https://www.npmjs.com/package/@mysten/bcs)** ^2.1.0 (peerDependency) - BCS serialization | BCS 序列化
+- **[bignumber.js](https://www.npmjs.com/package/bignumber.js)** 11.1.5 - Precise decimal arithmetic | 精確十進位運算
+- **[dotenv](https://www.npmjs.com/package/dotenv)** 17.4.2 - Environment variable management | 環境變數管理
 
 ### Development Tools | 開發工具
 
 - **[TypeScript](https://www.typescriptlang.org/)** ^5.9.3 - Type-safe JavaScript | 型別安全的 JavaScript
-- **[Jest](https://jestjs.io/)** ^30.2.0 - Testing framework | 測試框架
+- **[Vitest](https://vitest.dev/)** ^4.0.18 - Testing framework | 測試框架
+- **[tsup](https://tsup.egoist.dev/)** ^8.5.1 - Build bundler (ESM + CJS) | 建置打包工具（ESM + CJS）
 - **[ESLint](https://eslint.org/)** ^9.39.1 - Code linting | 程式碼檢查
 - **[Prettier](https://prettier.io/)** ^3.6.2 - Code formatting | 程式碼格式化
 - **[tsx](https://www.npmjs.com/package/tsx)** ^4.19.2 - TypeScript execution | TypeScript 執行工具
 
 ### Package Manager | 套件管理器
 
-- **[pnpm](https://pnpm.io/)** ^10.21.0 - Fast, disk space efficient package manager | 快速、節省磁碟空間的套件管理器
+- **[pnpm](https://pnpm.io/)** >= 9.0.0 - Fast, disk space efficient package manager | 快速、節省磁碟空間的套件管理器
 
 ## Configuration | 配置
 
@@ -305,24 +345,28 @@ toolkit 使用預定義的測試網配置：
 - **Pools | 池子**: SUI/DBUSDC trading pool
 - **Margin Pools | Margin 池子**: SUI and DBUSDC margin pools
 
-These configurations are defined in `src/testnet-config.ts`.
-這些配置定義於 `src/testnet-config.ts`。
+These configurations are defined in `src/margin-pool-config.ts`.
+這些配置定義於 `src/margin-pool-config.ts`。
 
 ## Environment Variables | 環境變數
 
-| Variable             | Description                     | Required | Auto-generated |
-| -------------------- | ------------------------------- | -------- | -------------- |
-| `PRIVATE_KEY`        | Wallet private key (hex, no 0x) | ✅ Yes   | ❌ No          |
-| `SUPPLIER_CAP_ID`    | Supplier Cap Object ID          | ❌ No    | ✅ Yes         |
-| `SUI_REFERRAL_ID`    | SUI Supply Referral ID          | ❌ No    | ✅ Yes         |
-| `DBUSDC_REFERRAL_ID` | DBUSDC Supply Referral ID       | ❌ No    | ✅ Yes         |
+| Variable             | Description                      | Required | Auto-generated |
+| -------------------- | -------------------------------- | -------- | -------------- |
+| `PRIVATE_KEY`        | Wallet private key (hex, no 0x)  | ✅ Yes   | ❌ No          |
+| `NETWORK`            | `testnet` (default) or `mainnet` | ❌ No    | ❌ No          |
+| `SUI_RPC_URL`        | Custom gRPC fullnode URL         | ❌ No    | ❌ No          |
+| `SUPPLIER_CAP_ID`    | Supplier Cap Object ID           | ❌ No    | ✅ Yes         |
+| `SUI_REFERRAL_ID`    | SUI Supply Referral ID           | ❌ No    | ✅ Yes         |
+| `DBUSDC_REFERRAL_ID` | DBUSDC Supply Referral ID        | ❌ No    | ✅ Yes         |
 
-| 變數                 | 說明                    | 必需  | 自動產生 |
-| -------------------- | ----------------------- | ----- | -------- |
-| `PRIVATE_KEY`        | 錢包私鑰（hex，無 0x）  | ✅ 是 | ❌ 否    |
-| `SUPPLIER_CAP_ID`    | Supplier Cap 物件 ID    | ❌ 否 | ✅ 是    |
-| `SUI_REFERRAL_ID`    | SUI 供應 Referral ID    | ❌ 否 | ✅ 是    |
-| `DBUSDC_REFERRAL_ID` | DBUSDC 供應 Referral ID | ❌ 否 | ✅ 是    |
+| 變數                 | 說明                          | 必需  | 自動產生 |
+| -------------------- | ----------------------------- | ----- | -------- |
+| `PRIVATE_KEY`        | 錢包私鑰（hex，無 0x）        | ✅ 是 | ❌ 否    |
+| `NETWORK`            | `testnet`（預設）或 `mainnet` | ❌ 否 | ❌ 否    |
+| `SUI_RPC_URL`        | 自訂 gRPC fullnode URL        | ❌ 否 | ❌ 否    |
+| `SUPPLIER_CAP_ID`    | Supplier Cap 物件 ID          | ❌ 否 | ✅ 是    |
+| `SUI_REFERRAL_ID`    | SUI 供應 Referral ID          | ❌ 否 | ✅ 是    |
+| `DBUSDC_REFERRAL_ID` | DBUSDC 供應 Referral ID       | ❌ 否 | ✅ 是    |
 
 ## Troubleshooting | 疑難排解
 
