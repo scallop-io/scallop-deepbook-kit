@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0](https://github.com/scallop-io/scallop-deepbook-kit/compare/v2.0.2...v3.0.0) (2026-07-24)
+
+### ⚠ BREAKING CHANGES
+
+`@mysten/deepbook-v3` is now a `peerDependency` instead of a `dependency`. Consumers must install it explicitly (`@mysten/deepbook-v3@~1.5.9`). The `@mysten/sui` peer range is narrowed to `~2.22.0`.
+
+### Changed
+
+- Move `@mysten/deepbook-v3` to `peerDependencies`, pin `bignumber.js`/`dotenv` to exact versions, narrow `@mysten/sui` peer range to `~2.22.0` ([f75a9d5](https://github.com/scallop-io/scallop-deepbook-kit/commit/f75a9d5372b931879e28f04fa98f6624b34fd830))
+
+### Added
+
+- Accept `SuiGraphQLClient`/`ClientWithCoreApi` alongside `SuiGrpcClient` in `getOnChainMarginPools` and `DeepBookMarginPool` ([46f6780](https://github.com/scallop-io/scallop-deepbook-kit/commit/46f678058382174e0e50a557e82d4174702e25dd))
+
 ## [2.0.2](https://github.com/scallop-io/scallop-deepbook-kit/compare/v2.0.1...v2.0.2) (2026-07-13)
 
 ### Fixed
