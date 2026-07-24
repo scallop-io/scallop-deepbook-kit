@@ -3,6 +3,7 @@ import { SuiGrpcClient } from '@mysten/sui/grpc';
 import { parseStructTag } from '@mysten/sui/utils';
 import { getGrpcFullnodeUrl } from '../utils/network.js';
 import { bcs } from '@mysten/sui/bcs';
+import { SuiGraphQLClient } from '@mysten/sui/graphql';
 
 const MARGIN_POOLS_TABLE_ID = '0x7f7351ef7e5089dfddf17f55abe028d719c45ca91d2c23e45a441ba65897f804';
 
@@ -22,7 +23,7 @@ export const getOnChainMarginPools = async ({
   }),
   tableId = MARGIN_POOLS_TABLE_ID,
 }: {
-  suiClient?: Pick<SuiGrpcClient, 'listDynamicFields' | 'getObjects'>;
+  suiClient?: Pick<SuiGrpcClient | SuiGraphQLClient, 'listDynamicFields' | 'getObjects'>;
   tableId?: string;
 } = {}) => {
   const marginPools: Array<{ address: string; type: string }> = [];
