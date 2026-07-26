@@ -115,7 +115,11 @@ describe('DeepBookMarginPool (unit)', () => {
 
   it('returns Transaction when inspect=false', async () => {
     const marginPool = new DeepBookMarginPool({ suiClient: suiClientMock as any });
-    const tx = await marginPool.getPoolParameters('SUI', undefined, new Transaction(), false);
+    const tx = await marginPool.getPoolParameters({
+      coinKey: 'SUI',
+      tx: new Transaction(),
+      inspect: false,
+    });
     expect(tx).toBeInstanceOf(Transaction);
   });
 
@@ -168,7 +172,7 @@ describe('DeepBookMarginPool (unit)', () => {
       utilizationRate: 0,
     });
 
-    const params = await marginPool.getPoolParameters('SUI');
+    const params = await marginPool.getPoolParameters({ coinKey: 'SUI' });
     expect(params).toBeDefined();
 
     MARGIN_POOL_PARAM_KEYS.forEach((key) => {
@@ -181,7 +185,12 @@ describe('DeepBookMarginPool (unit)', () => {
     const tx = new Transaction();
     const addSpy = vi.spyOn(tx, 'add');
 
-    await marginPool.getPoolParameters('SUI', normalizeSuiAddress(SUI_RANDOM_OBJECT_ID), tx, false);
+    await marginPool.getPoolParameters({
+      coinKey: 'SUI',
+      supplierCapId: normalizeSuiAddress(SUI_RANDOM_OBJECT_ID),
+      tx,
+      inspect: false,
+    });
 
     expect(addSpy.mock.calls.length).toBeGreaterThanOrEqual(
       MARGIN_POOL_PARAM_KEYS.length + MARGIN_POOL_W_SUPPLIER_CAP_PARAM_KEYS.length
@@ -210,7 +219,7 @@ describe('DeepBookMarginPool (unit)', () => {
 
     suiClientMock.core.getObject.mockResolvedValue(makeGrpcMarginPoolObject({ totalBorrow: '0' }));
 
-    await expect(marginPool.getPoolParameters('SUI')).resolves.toBeDefined();
+    await expect(marginPool.getPoolParameters({ coinKey: 'SUI' })).resolves.toBeDefined();
   });
 
   // ---------------------------------------------------------------
@@ -219,12 +228,11 @@ describe('DeepBookMarginPool (unit)', () => {
 
   it('getPoolsParameters returns Transaction when inspect=false', async () => {
     const marginPool = new DeepBookMarginPool({ suiClient: suiClientMock as any });
-    const tx = await marginPool.getPoolsParameters(
-      ['SUI', 'USDC'],
-      undefined,
-      new Transaction(),
-      false
-    );
+    const tx = await marginPool.getPoolsParameters({
+      coinKeys: ['SUI', 'USDC'],
+      tx: new Transaction(),
+      inspect: false,
+    });
     expect(tx).toBeInstanceOf(Transaction);
   });
 
@@ -233,7 +241,7 @@ describe('DeepBookMarginPool (unit)', () => {
     const tx = new Transaction();
     const addSpy = vi.spyOn(tx, 'add');
 
-    await marginPool.getPoolsParameters(['SUI', 'USDC'], undefined, tx, false);
+    await marginPool.getPoolsParameters({ coinKeys: ['SUI', 'USDC'], tx, inspect: false });
 
     // Each coin gets MARGIN_POOL_PARAM_KEYS calls (no supplierCap)
     expect(addSpy.mock.calls.length).toBe(MARGIN_POOL_PARAM_KEYS.length * 2);
@@ -245,7 +253,12 @@ describe('DeepBookMarginPool (unit)', () => {
     const addSpy = vi.spyOn(tx, 'add');
 
     const capId = normalizeSuiAddress(SUI_RANDOM_OBJECT_ID);
-    await marginPool.getPoolsParameters(['SUI', 'USDC'], capId, tx, false);
+    await marginPool.getPoolsParameters({
+      coinKeys: ['SUI', 'USDC'],
+      supplierCapId: capId,
+      tx,
+      inspect: false,
+    });
 
     const expectedPerCoin =
       MARGIN_POOL_PARAM_KEYS.length + MARGIN_POOL_W_SUPPLIER_CAP_PARAM_KEYS.length;
@@ -288,7 +301,7 @@ describe('DeepBookMarginPool (unit)', () => {
     }
     vi.spyOn(marginPool as any, 'formatResult').mockReturnValue(mockFormatted);
 
-    const results = await marginPool.getPoolsParameters(coinKeys);
+    const results = await marginPool.getPoolsParameters({ coinKeys });
 
     expect(results).toHaveLength(2);
     expect(suiClientMock.core.simulateTransaction).toHaveBeenCalledTimes(1);
@@ -318,7 +331,7 @@ describe('DeepBookMarginPool (unit)', () => {
       objects: [{ code: 'notFound' }],
     });
 
-    await expect(marginPool.getPoolsParameters(['SUI'])).rejects.toThrow(
+    await expect(marginPool.getPoolsParameters({ coinKeys: ['SUI'] })).rejects.toThrow(
       /Failed to fetch interest config for SUI/
     );
   });
@@ -336,7 +349,7 @@ describe('DeepBookMarginPool (unit)', () => {
       objects: [makeGrpcMarginPoolObject().object],
     });
 
-    await expect(marginPool.getPoolsParameters(['SUI'])).rejects.toThrow(
+    await expect(marginPool.getPoolsParameters({ coinKeys: ['SUI'] })).rejects.toThrow(
       /No results found in simulateTransaction output/
     );
   });
@@ -376,7 +389,7 @@ describe('DeepBookMarginPool (unit)', () => {
       utilizationRate: 0,
     });
 
-    const results = await marginPool.getPoolsParameters(coinKeys);
+    const results = await marginPool.getPoolsParameters({ coinKeys });
 
     expect(results).toHaveLength(75);
     expect(suiClientMock.core.getObjects).toHaveBeenCalledTimes(2);
@@ -407,7 +420,7 @@ describe('DeepBookMarginPool (unit)', () => {
       interestRate: 0.132349692,
     } as any);
 
-    await marginPool.getPoolParameters('SUI');
+    await marginPool.getPoolParameters({ coinKey: 'SUI' });
 
     expect(setGasBudgetSpy).toHaveBeenCalledWith(50_000_000_000n);
     expect(setGasPaymentSpy).toHaveBeenCalledWith([]);

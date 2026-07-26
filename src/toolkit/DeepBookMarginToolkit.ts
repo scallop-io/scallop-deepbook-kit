@@ -337,9 +337,11 @@ export class DeepBookMarginToolkit {
       tx.setSender(this.address);
       tx.add(this.marginPoolContract.userSupplyAmount(coin, capId));
 
-      const txBytes = await tx.build({ client: this.suiClient });
+      // Pass the Transaction, not pre-built bytes: `tx.build({ client })` runs the
+      // client's resolve plugin, which simulates the PTB on its own — so
+      // pre-building doubles a read into two serial simulations.
       const result = await this.suiClient.core.simulateTransaction({
-        transaction: txBytes,
+        transaction: tx,
         include: {
           commandResults: true,
         },
