@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [4.0.0](https://github.com/scallop-io/scallop-deepbook-kit/compare/v3.0.0...v4.0.0) (2026-07-26)
+
+### ⚠ BREAKING CHANGES
+
+`getPoolParameters`/`getPoolsParameters` now take a single options object instead of positional (`coinKey`/`coinKeys`, `supplierCapId`, `tx`, `inspect`) arguments.
+
+### Changed
+
+- `getPoolsParameters` now reads most margin-pool fields directly from the fetched pool object's JSON instead of issuing a Move call per field, cutting ~10 PTB commands per coin down to ~1 and avoiding a redundant `tx.build` simulation ([34beef4](https://github.com/scallop-io/scallop-deepbook-kit/commit/34beef478f23a114f5000ed7059b8ea1d5810e1f))
+
 ## [3.0.0](https://github.com/scallop-io/scallop-deepbook-kit/compare/v2.0.2...v3.0.0) (2026-07-24)
 
 ### ⚠ BREAKING CHANGES
