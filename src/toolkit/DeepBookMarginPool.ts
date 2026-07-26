@@ -56,8 +56,7 @@ type RawStatePoolConfig = {
  * Every one of these was previously read with its own `moveCall` inside a simulated
  * transaction — ten commands per coin — even though `getPoolsParameters` already
  * fetches the pool object itself (for the interest config) in the very same round.
- * With ~10 pools that is ~100 PTB commands and a 14-17KB request per call, which
- * measured as the single most expensive read in a cold dapp load.
+ * With ~10 pools that is ~100 PTB commands and a 14-17KB request per call.
  *
  * Verified field-by-field against a live mainnet `BatchGetObjects` response.
  */

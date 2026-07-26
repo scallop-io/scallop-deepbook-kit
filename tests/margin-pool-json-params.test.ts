@@ -12,8 +12,7 @@ import { DeepBookMarginPool } from '../src/toolkit';
  * `getPoolsParameters` used to read every pool parameter with its own `moveCall` —
  * ten commands per coin — while separately fetching the pool object in the same
  * round. Nine of those ten values are plain fields ON that object, so the calls were
- * re-fetching data already in hand. Measured on a cold dapp load this was the single
- * most expensive read: 14-17KB requests and multi-second simulations.
+ * re-fetching data already in hand.
  *
  * These specs pin the two things that must hold for that shortcut to be safe:
  *   - the values derived from JSON equal what the Move calls returned, and
