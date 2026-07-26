@@ -39,8 +39,8 @@ const main = async () => {
         marginPools: MARGIN_POOLS,
       }),
     });
-    const coinKeys = ['USDC', 'XBTC'];
-    const suiMarginPoolsParams = await dbMarginPool.getPoolsParameters(coinKeys);
+    const coinKeys = [...Object.keys(MARGIN_POOLS)];
+    const suiMarginPoolsParams = await dbMarginPool.getPoolsParameters({ coinKeys });
     console.log('Margin Pools Parameters:');
     console.log(JSON.stringify(suiMarginPoolsParams, null, 2));
   } catch (error) {

@@ -49,6 +49,54 @@ type RawStatePoolConfig = {
   total_borrow: string;
 };
 
+/**
+ * Pool params that are plain fields on the `MarginPool` object, mapped to their path
+ * in its JSON representation.
+ *
+ * Every one of these was previously read with its own `moveCall` inside a simulated
+ * transaction — ten commands per coin — even though `getPoolsParameters` already
+ * fetches the pool object itself (for the interest config) in the very same round.
+ * With ~10 pools that is ~100 PTB commands and a 14-17KB request per call.
+ *
+ * Verified field-by-field against a live mainnet `BatchGetObjects` response.
+ */
+const JSON_DERIVED_PARAM_PATHS = {
+  supplyCap: ['config', 'margin_pool_config', 'supply_cap'],
+  maxUtilizationRate: ['config', 'margin_pool_config', 'max_utilization_rate'],
+  protocolSpread: ['config', 'margin_pool_config', 'protocol_spread'],
+  minBorrow: ['config', 'margin_pool_config', 'min_borrow'],
+  totalSupply: ['state', 'total_supply'],
+  supplyShares: ['state', 'supply_shares'],
+  totalBorrow: ['state', 'total_borrow'],
+  borrowShares: ['state', 'borrow_shares'],
+  lastUpdateTimestamp: ['state', 'last_update_timestamp'],
+} as const satisfies Partial<Record<MarginPoolParamKey, readonly string[]>>;
+
+const JSON_DERIVED_PARAM_KEYS = Object.keys(
+  JSON_DERIVED_PARAM_PATHS
+) as (keyof typeof JSON_DERIVED_PARAM_PATHS)[];
+
+const readPath = (json: unknown, path: readonly string[]): unknown =>
+  path.reduce<any>((node, segment) => (node == null ? node : node[segment]), json);
+
+export type GetPoolParametersArgs = {
+  /** Asset key. */
+  coinKey: string;
+  /** Supplier cap object ID. */
+  supplierCapId?: string;
+  /** Optional transaction to append to. */
+  tx?: Transaction;
+};
+
+export type GetPoolsParametersArgs = {
+  /** Asset keys. */
+  coinKeys: string[];
+  /** Supplier cap object ID. */
+  supplierCapId?: string;
+  /** Optional transaction to append to. */
+  tx?: Transaction;
+};
+
 // Track which param keys require a supplierCap argument
 const _WITH_CAP_KEYS = new Set<string>(MARGIN_POOL_W_SUPPLIER_CAP_PARAM_KEYS as readonly string[]);
 
@@ -350,39 +398,25 @@ export class DeepBookMarginPool {
   /**
    * Build a transaction for pool parameters that can include supplier-cap inputs.
    *
-   * @param coinKey - Asset key.
-   * @param supplierCapId - Supplier cap object ID.
-   * @param tx - Optional transaction to append to.
-   * @param inspect - Whether to perform devInspect and return decoded results.
+   * @param args.coinKey - Asset key.
+   * @param args.supplierCapId - Supplier cap object ID.
+   * @param args.tx - Optional transaction to append to.
+   * @param args.inspect - Whether to perform devInspect and return decoded results.
    *
    * @returns Parsed parameters or transaction object ready for execution.
    */
   async getPoolParameters(
-    coinKey: string,
-    supplierCapId?: string,
-    tx?: Transaction
+    args: GetPoolParametersArgs & { inspect?: true }
   ): Promise<MarginPoolParams>;
 
-  async getPoolParameters(
-    coinKey: string,
-    supplierCapId: string | undefined,
-    tx: Transaction,
-    inspect: true
-  ): Promise<MarginPoolParams>;
+  async getPoolParameters(args: GetPoolParametersArgs & { inspect: false }): Promise<Transaction>;
 
-  async getPoolParameters(
-    coinKey: string,
-    supplierCapId: string | undefined,
-    tx: Transaction,
-    inspect: false
-  ): Promise<Transaction>;
-
-  async getPoolParameters(
-    coinKey: string,
-    supplierCapId?: string,
-    tx: Transaction = new Transaction(),
-    inspect: boolean = true
-  ): Promise<MarginPoolParams | Transaction> {
+  async getPoolParameters({
+    coinKey,
+    supplierCapId,
+    tx = new Transaction(),
+    inspect = true,
+  }: GetPoolParametersArgs & { inspect?: boolean }): Promise<MarginPoolParams | Transaction> {
     // Add base parameters
     MARGIN_POOL_PARAM_KEYS.forEach((paramKey) => this.#addParamCall(tx, paramKey, coinKey));
 
@@ -408,9 +442,10 @@ export class DeepBookMarginPool {
     tx.setSender(sender);
     tx.setGasBudget(50_000_000_000n);
     tx.setGasPayment([]);
-    const txBytes = await tx.build({ client: this.suiClient });
+    // Pass the Transaction rather than pre-built bytes — see the note in
+    // `getPoolsParameters`: `tx.build({ client })` costs an extra full simulation.
     const inspectResult = await this.suiClient.core.simulateTransaction({
-      transaction: txBytes,
+      transaction: tx,
       include: {
         commandResults: true,
       },
@@ -431,118 +466,126 @@ export class DeepBookMarginPool {
    * Batch version of getPoolParameters for reduced RPC calls.
    * Adds all param calls to a single transaction and performs one simulateTransaction.
    *
-   * @param coinKeys - Asset keys.
-   * @param supplierCapId - Supplier cap object ID.
-   * @param tx - Optional transaction to append to.
-   * @param inspect - Whether to perform simulateTransaction and return decoded results.
+   * @param args.coinKeys - Asset keys.
+   * @param args.supplierCapId - Supplier cap object ID.
+   * @param args.tx - Optional transaction to append to.
+   * @param args.inspect - Whether to perform simulateTransaction and return decoded results.
    *
    * @returns Parsed parameters or transaction object ready for execution.
    */
   async getPoolsParameters(
-    coinKeys: string[],
-    supplierCapId?: string,
-    tx?: Transaction
+    args: GetPoolsParametersArgs & { inspect?: true }
   ): Promise<MarginPoolParams[]>;
 
-  async getPoolsParameters(
-    coinKeys: string[],
-    supplierCapId: string | undefined,
-    tx: Transaction,
-    inspect: true
-  ): Promise<MarginPoolParams[]>;
+  async getPoolsParameters(args: GetPoolsParametersArgs & { inspect: false }): Promise<Transaction>;
 
-  async getPoolsParameters(
-    coinKeys: string[],
-    supplierCapId: string | undefined,
-    tx: Transaction,
-    inspect: false
-  ): Promise<Transaction>;
+  async getPoolsParameters({
+    coinKeys,
+    supplierCapId,
+    tx = new Transaction(),
+    inspect = true,
+  }: GetPoolsParametersArgs & { inspect?: boolean }): Promise<MarginPoolParams[] | Transaction> {
+    // `inspect: false` hands the caller a transaction to run themselves, so it must
+    // keep carrying every param call — the read-path optimisation below would
+    // silently change what that transaction returns.
+    if (!inspect) {
+      for (const coinKey of coinKeys) {
+        MARGIN_POOL_PARAM_KEYS.forEach((paramKey) => this.#addParamCall(tx, paramKey, coinKey));
 
-  async getPoolsParameters(
-    coinKeys: string[],
-    supplierCapId?: string,
-    tx: Transaction = new Transaction(),
-    inspect: boolean = true
-  ): Promise<MarginPoolParams[] | Transaction> {
-    // Add all param calls for every coin into a single transaction
+        if (supplierCapId) {
+          MARGIN_POOL_W_SUPPLIER_CAP_PARAM_KEYS.forEach((paramKey) =>
+            this.#addParamCall(tx, paramKey, coinKey, supplierCapId)
+          );
+        }
+      }
+      return tx;
+    }
+
+    // Everything in JSON_DERIVED_PARAM_PATHS comes off the pool object we fetch
+    // anyway, so only the genuinely computed values still need Move calls: the
+    // current interest rate and the two per-user figures that require a supplier cap.
+    const callKeys: (MarginPoolParamKey | MarginPoolWithSupplierCapParamKey)[] = [
+      'interestRate',
+      ...(supplierCapId ? MARGIN_POOL_W_SUPPLIER_CAP_PARAM_KEYS : []),
+    ];
+
     for (const coinKey of coinKeys) {
-      MARGIN_POOL_PARAM_KEYS.forEach((paramKey) => this.#addParamCall(tx, paramKey, coinKey));
-
-      if (supplierCapId) {
-        MARGIN_POOL_W_SUPPLIER_CAP_PARAM_KEYS.forEach((paramKey) =>
-          this.#addParamCall(tx, paramKey, coinKey, supplierCapId)
-        );
+      for (const paramKey of callKeys) {
+        // @ts-ignore — overload split on whether the key needs a supplier cap
+        this.#addParamCall(tx, paramKey, coinKey, supplierCapId);
       }
     }
 
-    if (!inspect) return tx;
-
-    // Determine how many result slots each coin occupies
-    const keysPerCoin: (MarginPoolParamKey | MarginPoolWithSupplierCapParamKey)[] = [
-      ...MARGIN_POOL_PARAM_KEYS,
-      ...(supplierCapId ? MARGIN_POOL_W_SUPPLIER_CAP_PARAM_KEYS : []),
-    ];
-    const slotCount = keysPerCoin.length;
-
-    // Single simulateTransaction + batched getObjects
     const objectIds = coinKeys.map((coinKey) => this.dbConfig.getMarginPool(coinKey).address);
     const objectIdChunks: string[][] = [];
     for (let i = 0; i < objectIds.length; i += 50) {
       objectIdChunks.push(objectIds.slice(i, i + 50));
     }
 
+    const readObjects = () =>
+      Promise.all(
+        objectIdChunks.map((chunk) =>
+          this.suiClient.core.getObjects({
+            objectIds: chunk,
+            include: { json: true },
+          })
+        )
+      );
+
     const sender =
       this.dbConfig.address || '0x0000000000000000000000000000000000000000000000000000000000000000';
     tx.setSender(sender);
     tx.setGasBudget(50_000_000_000n);
     tx.setGasPayment([]);
-    const txBytes = await tx.build({ client: this.suiClient });
 
-    const [inspectResult, ...objectResponses] = await Promise.all([
+    // Kept concurrent: the object read does not depend on the simulation.
+    const [inspectResult, objectResponses] = await Promise.all([
+      // Hand over the Transaction, NOT pre-built bytes. `tx.build({ client })`
+      // runs the client's resolveTransactionData plugin, which unconditionally
+      // simulates the whole PTB just to resolve sender/gas/expiration — so
+      // pre-building cost a second full simulation of an identical transaction,
+      // strictly serial with this one. Passing the Transaction takes the
+      // `prepareForSerialization` path instead: one round trip.
       this.suiClient.core.simulateTransaction({
-        transaction: txBytes,
+        transaction: tx,
         include: {
           commandResults: true,
         },
       }),
-      ...objectIdChunks.map((chunk) =>
-        this.suiClient.core.getObjects({
-          objectIds: chunk,
-          include: { json: true },
-        })
-      ),
+      readObjects(),
     ]);
-    const objects = objectResponses.flatMap((response) => response.objects);
-
     const allResults = inspectResult.commandResults;
     if (!allResults) throw new Error('No results found in simulateTransaction output.');
 
-    // Split results per coin and format
+    const objects = objectResponses.flatMap((response) => response.objects);
+
     return Promise.all(
       coinKeys.map(async (coinKey, coinIdx) => {
-        const offset = coinIdx * slotCount;
-
-        // Parse the slice of results belonging to this coin
-        const parsed = keysPerCoin.reduce(
-          (acc, key, keyIdx) => {
-            const bytes = allResults[offset + keyIdx]?.returnValues?.[0]?.bcs;
-            if (!bytes) return acc;
-            const bcsType = bcs[MARGIN_POOL_PARAM_KEY_STRUCT_MAP[key]];
-            acc[key] = bcsType.parse(new Uint8Array(bytes));
-            return acc;
-          },
-          {} as Record<MarginPoolParamKey | MarginPoolWithSupplierCapParamKey, string>
-        );
-
-        const formattedResult = this.formatResult(parsed, coinKey);
-        const borrowAprScaled = BigInt(parsed.interestRate ?? 0);
-
         const objectResult = objects[coinIdx];
         if (!objectResult || 'code' in objectResult) {
           throw new Error(`Failed to fetch interest config for ${coinKey}`);
         }
-
         const json = (objectResult as any).json;
+
+        const parsed = {} as Record<MarginPoolParamKey | MarginPoolWithSupplierCapParamKey, string>;
+
+        // Straight off the object.
+        for (const key of JSON_DERIVED_PARAM_KEYS) {
+          const value = readPath(json, JSON_DERIVED_PARAM_PATHS[key]);
+          if (value != null) parsed[key] = String(value);
+        }
+
+        // Whatever still had to be asked for, in the order it was added per coin.
+        const offset = coinIdx * callKeys.length;
+        callKeys.forEach((key, keyIdx) => {
+          const bytes = allResults[offset + keyIdx]?.returnValues?.[0]?.bcs;
+          if (!bytes) return;
+          const bcsType = bcs[MARGIN_POOL_PARAM_KEY_STRUCT_MAP[key]];
+          parsed[key] = bcsType.parse(new Uint8Array(bytes));
+        });
+
+        const formattedResult = this.formatResult(parsed, coinKey);
+        const borrowAprScaled = BigInt(parsed.interestRate ?? 0);
         const interestData = await this.#getInterestConfig(coinKey, borrowAprScaled, json);
 
         return {

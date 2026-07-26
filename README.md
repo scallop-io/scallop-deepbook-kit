@@ -239,7 +239,7 @@ new DeepBookMarginPool(params?: {
 
 #### Methods | 方法
 
-##### `getPoolParameters(coinKey: string, supplierCapId?: string, tx?: Transaction): Promise<MarginPoolParams>`
+##### `getPoolParameters({ coinKey, supplierCapId?, tx?, inspect? }): Promise<MarginPoolParams | Transaction>`
 
 Fetch and decode a single margin pool's parameters (supply cap, utilization, interest rate config, and — if `supplierCapId` is provided — user supply amount/shares).
 擷取並解碼單一 margin pool 的參數（供應上限、使用率、利率配置，若提供 `supplierCapId` 則包含使用者供應量/份額）。
